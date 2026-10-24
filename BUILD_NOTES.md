@@ -461,6 +461,26 @@ $ ./build/krkrrun tests/layer.tjs
 - 填充矩形**钳到纹理边界**
 - `taskNum` 至少为 1
 
+### 18b. 子图层：KAG 的下一个障碍（已定位，未解）
+准备 KAG 形状的引导脚本（`tests/minikag/`）时撞到一个具体障碍：
+
+```tjs
+var base = new Layer(win, null);      // ✅ 主图层，正常
+var text = new Layer(base, null);     // ❌ 子图层 —— 进程静默退出（exit 0，无报错）
+```
+
+已用最小脚本逐层验证（都在函数内调用）：
+- `new Window()` + `setInnerSize` ✅
+- `new Layer(win, null)` + `setSize` + `fillRect` ✅
+- **`new Layer(base, null)`（带父图层）→ 静默终止** ← 卡点
+
+为什么重要：KAG 的层树就是这样搭的（base → message → sprite 层），所以这一步不通，
+KAG 引导脚本就起不来。静默退出（而不是抛异常）说明是 `TJS` 层的致命错误落在了
+`TVPShowScriptException`/终止路径上；下一步该查 `tTJSNI_BaseLayer::Construct` 里
+`Join(lay)`/`Manager->AddRef()` 那段对父图层的处理。
+
+`tests/minikag/system.tjs` 与 `first.tjs` 保留下来，就是这两个脚本暴露了这个卡点。
+
 ### 18a. 图层上屏（合成结果读回）✅
 `krkrrun` 新增 `--screenshot <path>`：脚本跑完后从绘制设备的主图层取像素存图。
 
