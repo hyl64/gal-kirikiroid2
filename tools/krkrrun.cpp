@@ -26,6 +26,7 @@
 #include "FontImpl.h"
 #include "DebugIntf.h"
 #include "PluginImpl.h"
+#include "tvpgl.h"
 
 #include <cstdio>
 #include <string>
@@ -89,6 +90,10 @@ int main(int argc, char** argv)
 		fprintf(stderr, "krkrrun: cannot read %s\n", argv[1]);
 		return 1;
 	}
+
+	// the pixel pipeline's function table: without it the first blitter call
+	// jumps through a null pointer, which is how the layer's first fill died
+	TVPInitTVPGL();
 
 	ConsoleOutput console;
 	tTJS* tjs = new tTJS();

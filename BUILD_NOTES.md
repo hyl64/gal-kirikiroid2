@@ -431,7 +431,37 @@ wrote /tmp/text2.bmp
 **仍由桌面提供的**（真正平台专属，不可替代）：SDL 窗口与送显、文件存储媒体、
 字体钩子、剪贴板、软件渲染管理器的纹理、`LayerBitmapImpl`/`TextDraw` 的平台实现。
 
-### 18. 图层首次填充崩溃：定位进展（未解）
+### 18. 图层系统跑通了 ✅（2026-10-25 解决）
+
+**根因**：`krkrrun` 这个工具**没有调用 `TVPInitTVPGL()`**。像素管线（`tvpgl.cpp`，
+12600 行）的全部 blitter 都是**函数指针**，在 `TVPInitTVPGL()` 里赋值；不初始化就是
+空指针。图层构造函数第一次 `Fill` → `PartialFill` → `TVPFillARGB(...)` → **跳到空指针**。
+崩溃栈看起来像「引擎的填充器写越界」，实际是工具少了一步初始化。
+
+一条线：
+```cpp
+// tools/krkrrun.cpp
+TVPInitTVPGL();   // ← 缺这一行，就崩在图层第一次填充
+```
+
+**结果**（`tests/layer.tjs`，全部走引擎自己的脚本对象）：
+```
+$ ./build/krkrrun tests/layer.tjs
+[Information] layer: 640x480
+[Information] background: 6307872
+[Information] pixels drawn: 854
+[Information] layer drawing works
+```
+
+一个 `Window`、一个 `Layer`、`fillRect`、两行 `drawText`、再逐像素读回验证——
+**引擎的图层系统在 arm64 上端到端工作了**。
+
+**顺带留下的防御**（都在 `RenderManager.cpp`，有环境变量开关）：
+- `FillARGB` 在扫描线为空时**报错返回而不是崩**
+- 填充矩形**钳到纹理边界**
+- `taskNum` 至少为 1
+
+### 18a. 排查过程（保留，作为教训）
 
 **现象**：脚本 `new Window()` 成功，紧接着 `new Layer(...)` 在图层构造函数里崩：
 

@@ -1,4 +1,6 @@
 #include "RenderManager.h"
+
+#include <cstdio>
 #include "renderer/CCTexture2D.h"
 typedef cocos2d::Texture2D::PixelFormat CCPixelFormat;
 #include "MsgIntf.h"
@@ -1035,11 +1037,56 @@ public:
 	{
 		tjs_int pitch = _tar->GetPitch();
 		bool is32bpp = _tar->GetFormat() == TVPTextureFormat::RGBA;
-		tjs_uint8 *dest = (tjs_uint8*)_tar->GetScanLineForWrite(rect.top) + rect.left * (is32bpp ? 4 : 1);
+		// a texture with no pixel buffer has no scan lines; say so instead of
+		// writing through a null pointer (the desktop back end hit this)
+		void *line = _tar->GetScanLineForWrite(rect.top);
+		if (line == nullptr)
+		{
+			fprintf(stderr, "[fill] no scan line: texture %ux%u fmt=%d pitch=%d, rect %d,%d..%d,%d\n",
+				(unsigned)_tar->GetInternalWidth(), (unsigned)_tar->GetInternalHeight(),
+				(int)_tar->GetFormat(), (int)pitch,
+				(int)rect.left, (int)rect.top, (int)rect.right, (int)rect.bottom);
+			return;
+		}
+		tjs_uint8 *dest = (tjs_uint8*)line + rect.left * (is32bpp ? 4 : 1);
 		tjs_int h = rect.bottom - rect.top;
 		tjs_int w = rect.right - rect.left;
 
+		// a caller may fill a rectangle larger than the picture (the engine does
+		// this for a 33rd pixel of a 32 bit texture); the write has to stay
+		// inside it, and the desktop back end wants to know when it happens
+		{
+			const tjs_int texW = (tjs_int)_tar->GetInternalWidth();
+			const tjs_int texH = (tjs_int)_tar->GetInternalHeight();
+			const tjs_int left = (tjs_int)rect.left;
+			if(left < 0 || (tjs_int)rect.top < 0 || left + w > texW || (tjs_int)rect.top + h > texH)
+			{
+				if(getenv("KRKR_DEBUG_FILL") != nullptr)
+					fprintf(stderr, "[fill] clipping rect %d,%d %dx%d to texture %dx%d\n",
+						left, (int)rect.top, (int)w, (int)h, (int)texW, (int)texH);
+				if(left < 0)
+				{
+					w += left;
+					dest -= left * (is32bpp ? 4 : 1);
+				}
+				if((tjs_int)rect.top < 0)
+					h += (tjs_int)rect.top;
+				if(left + w > texW)
+					w = texW - left;
+				if((tjs_int)rect.top + h > texH)
+					h = texH - (tjs_int)rect.top;
+				if(w <= 0 || h <= 0)
+					return;
+			}
+		}
+
 		tjs_int taskNum = GetAdaptiveThreadNum(w * h, 150);
+		if(getenv("KRKR_DEBUG_FILL") != nullptr)
+			fprintf(stderr, "[fill] w=%d h=%d tex=%ux%u pitch=%d dest=%p tasks=%d\n",
+				(int)w, (int)h, (unsigned)_tar->GetInternalWidth(),
+				(unsigned)_tar->GetInternalHeight(), (int)pitch, (void*)dest, (int)taskNum);
+		if(taskNum < 1)
+			taskNum = 1;
 		TVPExecThreadTask(taskNum, [&](int i){
 			tjs_int y0, y1;
 			y0 = h * i / taskNum;
