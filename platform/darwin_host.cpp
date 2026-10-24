@@ -405,6 +405,9 @@ void TVPAddAtExitHandler(tjs_int pri, void (*handler)())
 	gExitHandlers.push_back({pri, handler});
 }
 
+// The application object the engine's logging reaches for; a tool has none.
+tTVPApplication* Application = nullptr;
+
 // The engine's console: the messages the application prints for the user go
 // to the terminal when there is no window to draw them in.
 void tTVPApplication::PrintConsole(const ttstr& mes, bool important)

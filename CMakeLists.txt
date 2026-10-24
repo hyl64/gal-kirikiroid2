@@ -53,6 +53,7 @@ add_compile_definitions(
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ONIG REQUIRED oniguruma)
+pkg_check_modules(SDL2 REQUIRED sdl2)
 
 # ---- TJS2: the script engine -------------------------------------------------
 # Everything under src/core/tjs2; it needs the message catalogue and a handful
@@ -107,6 +108,28 @@ else()
 	# just slower: USING_THREADPOOL11 is off and omp pragmas are ignored
 	message(STATUS "OpenMP not found: TVPExecThreadTask runs single-threaded")
 endif()
+
+# ---- krkrvis: the software blitters --------------------------------------
+# visual/tvpgl.cpp is the engine's whole pixel pipeline as function pointers
+# (12 600 lines), assigned to the generic C implementations in TVPInitTVPGL and
+# initialised by the tables in visual/gl/blend_function.cpp.  The SIMD dispatch
+# header the Android build generates has no desktop counterpart, which is why
+# platform/compat/tvpgl_route.h exists; the C path is what runs here.
+#
+# The image decoders and the bitmap classes sit on top of this and need the
+# platform bitmap layer (visual/win32/LayerBitmapImpl.cpp and the window), which
+# is the next piece of work.
+add_library(krkrvis STATIC
+	${CORE}/visual/tvpgl.cpp
+	${CORE}/visual/gl/blend_function.cpp)
+target_include_directories(krkrvis PUBLIC ${KRKR_INCLUDES}
+	${CMAKE_CURRENT_SOURCE_DIR}/platform)
+target_link_libraries(krkrvis PUBLIC krkrbase)
+
+add_executable(krkrblit tools/krkrblit.cpp)
+target_link_libraries(krkrblit PRIVATE krkrvis)
+target_include_directories(krkrblit PRIVATE ${KRKR_INCLUDES}
+	${CMAKE_CURRENT_SOURCE_DIR}/platform)
 
 # ---- krkrscript: a TJS2 host with the storage layer attached -----------------
 add_executable(krkrscript tools/krkrscript.cpp)

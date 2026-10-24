@@ -116,6 +116,45 @@ exit 0
 - 已知限制：引擎会规范化掉相对名里的 `./`，所以**归档内成员要用绝对路径**
   （`file:///abs/path/game.xp3>inner.txt`）；窗口层落地后由游戏目录解析补上
 
+### 5. 软件像素管线（tvpgl）→ `krkrblit` ✅
+引擎所有的图层、精灵、转场最终都落进 `visual/tvpgl.cpp`——12600 行的像素管线，
+以函数指针表的形式存在，`TVPInitTVPGL()` 把每个指针指到通用 C 实现。
+
+**卡点与解法**：它 `#include "tvpgl_route.h"`，而这个头是 Android 构建**生成**的
+（按 CPU 选 SIMD 实现），树里没有。查清 `TVPInitTVPGL()` 里已经直接把指针赋成
+`_c` 通用实现，所以这个头**可以是空的**——补一个带说明的空兼容头即可。
+（期间顺手给 `tTVPApplication* Application` 补了定义，日志层要用。）
+
+验证工具 `krkrblit`（按混合器的真实契约断言，定点位移 ±1 容差）：
+
+```
+$ ./build/krkrblit
+  ok    opaque source replaces the destination         0xff2040bf
+  ok    transparent source leaves the destination      0xff808080
+  ok    half alpha lands between the colours           r=0x40
+  ok    additive blend brightens                       0xff303030
+  32 -> 24 bit conversion                              ff 00 80
+all passed: 0 check(s) failed
+```
+
+两个语义细节（踩过才知道）：
+- `TVPAlphaBlend` 是「目标无 alpha」的变体，**不保留目标 alpha**；带 alpha 的目标用 `TVPAlphaBlend_d`
+- 定点运算 `((s-d)*a)>>8` 会使结果比精确值低 1，断言必须容差 1
+
+## 窗口层的真实工作量（下一步）
+
+渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：
+
+| 文件 | 行数 | 作用 |
+|---|---|---|
+| `visual/win32/LayerBitmapImpl.cpp` | 1607 | `tTVPNativeBaseBitmap`（GetWidth/GetScanLine…）——**图像解码器和所有图层都依赖它** |
+| `visual/win32/WindowImpl.cpp` | 2432 | 窗口/DrawDevice |
+| `visual/win32/BasicDrawDevice.cpp` | 1009 | 绘制设备 |
+| `visual/win32/DrawDevice.cpp` `DInputMgn.cpp` `VideoOvlImpl.cpp` `PassThroughDrawDevice.cpp` | ~3400 | 其余 |
+
+计划：照 OpenBGI 的做法给 macOS 写 SDL2 版（`LayerBitmapImpl` 用软件位图 + SDL 纹理，
+窗口用 SDL2），`tvpgl` 已在上面验好。
+
 ## 剩余工作（按依赖顺序）
 1. ~~XP3 归档层~~ ✅
 2. **TVP 扩展类**（`Storage`/`Scripts`/`Window`/`System` 的完整版）——KAG 脚本直接调它们
