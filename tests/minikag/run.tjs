@@ -13,10 +13,12 @@ function kagInit(width, height)
 
 	kagBase = new Layer(kagWindow, null);
 	kagBase.setSize(width, height);
+	kagBase.visible = true; // a layer is invisible until it is told otherwise
 	kagBase.fillRect(0, 0, width, height, 0xff102030);
 
 	kagText = new Layer(kagWindow, kagBase);
 	kagText.setSize(width, height);
+	kagText.visible = true;
 
 	System.inform("engine up: " + width + "x" + height + ", two layers");
 }

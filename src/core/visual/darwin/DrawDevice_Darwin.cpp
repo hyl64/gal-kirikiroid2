@@ -123,7 +123,17 @@ void TJS_INTF_METHOD tTVPDrawDevice_Darwin::Show()
 	{
 		if(tTVPLayerManager* concrete = dynamic_cast<tTVPLayerManager*>(manager))
 			if(tTVPBaseTexture* composed = concrete->GetOrCreateDrawBuffer())
+			{
+				if(getenv("KRKR_DEBUG_DEV"))
+				{
+					fprintf(stderr, "[dev] draw buffer %ux%u (primary %ux%u)\n",
+						(unsigned)composed->GetWidth(), (unsigned)composed->GetHeight(),
+						(unsigned)primary->GetMainImage()->GetWidth(),
+						(unsigned)primary->GetMainImage()->GetHeight());
+					fflush(stderr);
+				}
 				screen = composed;
+			}
 	}
 	if(screen == nullptr)
 		return;

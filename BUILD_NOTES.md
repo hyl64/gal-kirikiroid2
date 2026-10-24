@@ -539,7 +539,37 @@ if(iTVPLayerManager* m = primary->GetManager())
 至此引擎②的显示链路完整：**脚本 → 窗口 → 图层树（父/子）→ 图层管理器合成
 → 绘制设备 → 帧**。
 
-### 18f. mini-KAG 跑起来了，但合成在 640×480 多图层下不完整（待查）
+### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
+
+**结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
+
+引擎里 `tTJSNI_BaseLayer` 的 `Visible` 初始值是 `false`（主图层会在 `AttachPrimary`
+时被置为 true，**子图层不会**）。所以：
+
+```tjs
+var t = new Layer(w, base);
+t.visible = true;      // ← 缺这一行，画在子层上的东西永远不会合成
+```
+
+补上之后，640×480、512×384、384×288 全部正常（呈现帧 117 种颜色）。
+之前 320×240 那个「成功案例」能被记住，正是因为它的脚本里恰好写了
+`.visible = true`——**我自己写的两个测试脚本不一致，才造出「尺寸相关」的假象**。
+
+修正后 mini-KAG 完整输出（`screenshots/minikag-scenario.png`）：
+
+```
+[Information] engine up: 640x480, two layers
+[Information] line shown: はじまりの朝。
+[Information] line shown: 窓の外は、まだ青い。
+[Information] line shown: KiriKiri on arm64.
+[Information] scenario finished, pixels drawn: 25061
+wrote ... (640x480, presented frame)     帧内 224 种颜色
+```
+
+**KAG 形状的引导脚本在移植版上跑通了**：system.tjs 建窗口/图层、剧本逐行推进、
+三次 update、合成、上屏。
+
+### 18f-old. 当时的错误判断（保留）
 
 `tests/minikag/`：KAG 形状的引导（`system.tjs` 建窗口与两个图层 + `showLine`，
 `first.tjs` 逐行推进），合并成 `run.tjs` 运行：
