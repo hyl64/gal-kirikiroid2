@@ -79,6 +79,9 @@ tjs_int TVPGetFontRasterizer() {
 	return TVPCurrentFontRasterizers;
 }
 FontRasterizer* GetCurrentRasterizer() {
+	extern void TVPInializeFontRasterizers();
+	if(!TVPFontRasterizersInit)
+		TVPInializeFontRasterizers();
 	return TVPFontRasterizers[TVPCurrentFontRasterizers];
 }
 

@@ -361,6 +361,28 @@ presented 60 frame(s) on 'cocoa'      ← 真的开了一个 Cocoa 窗口
 上游是 GDI 实现，需按预渲染字形 + tvpgl 重写）+ 脚本侧 `Window`/`MenuItem` 类
 （定义在 VCL 应用层）。
 
+### 15. 文字绘制跑通 → `krkrtext` ✅（关键里程碑）
+意外的好消息：**上游的文字绘制也没有一处 GDI 调用**。`InternalBlendText` 的做法是
+「字形覆盖率 → 临时纹理 → 向渲染管理器要 `ApplyColorMap`/`ApplyColorMap_d`/
+`AlphaBlend_a`/`RemoveOpacity` 方法 → `OperateRect` 合成」，软件渲染管理器全都提供了。
+
+新增 `visual/darwin/TextDraw_Darwin.cpp`（从 win32 版搬移，非重写）：
+`InternalBlendText` / `InternalDrawText` / `DrawGlyph` / `DrawTextSingle` /
+`DrawTextMultiple` / `DrawText`，外加字形缓存（`TVPFontCache` + `TVPGetCharacter`）。
+
+**验证**（`krkrtext`，全部走引擎 API）：
+```
+$ ./build/krkrtext /tmp/text2.bmp 40 "あ漢A9 テスト"
+drawn: 6083 non-background pixel(s)
+wrote /tmp/text2.bmp
+```
+产物见 `screenshots/text-on-bitmap.png`：同一句「あ漢A9 テスト」用 `bmAlpha` 与
+`bmCopy` 两种混合模式画了两行，字形清晰、抗锯齿正常。
+
+坑：`DrawTextSingle` 只画**一个**字符，字符串要走 `DrawText`（内部会分派到
+`DrawTextMultiple`）；字体栅格化器需要**懒初始化**（Windows 版在应用启动时初始化，
+工具里没人做，`GetCurrentRasterizer()` 里补了）。
+
 ## 窗口层的真实工作量（下一步，已勘察清楚）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：

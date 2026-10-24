@@ -149,6 +149,7 @@ add_library(krkrvis STATIC
 	${CORE}/visual/win32/LayerImpl.cpp
 	${CORE}/visual/darwin/DrawDevice_Darwin.cpp
 	${CORE}/visual/darwin/FontRasterizers_Darwin.cpp
+	${CORE}/visual/darwin/TextDraw_Darwin.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/platform/darwin/darwin_visual_services.cpp)
 target_include_directories(krkrvis PUBLIC ${KRKR_INCLUDES}
 	${CMAKE_CURRENT_SOURCE_DIR}/platform)
@@ -169,6 +170,10 @@ target_link_libraries(krkrvis PUBLIC ${LZ4_LIBRARIES} swscale
 target_link_directories(krkrvis PUBLIC /opt/homebrew/lib ${OPENCV4_LIB})
 target_link_libraries(krkrvis PUBLIC ${FREETYPE_LIBRARIES})
 target_link_directories(krkrvis PUBLIC ${FREETYPE_LIBRARY_DIRS})
+
+add_executable(krkrtext tools/krkrtext.cpp)
+target_link_libraries(krkrtext PRIVATE krkrvis ${SDL2_LIBRARIES})
+target_include_directories(krkrtext PRIVATE ${KRKR_INCLUDES} ${SDL2_INCLUDE_DIRS})
 
 add_executable(krkrpresent tools/krkrpresent.cpp)
 target_link_libraries(krkrpresent PRIVATE krkrvis ${SDL2_LIBRARIES})

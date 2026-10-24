@@ -530,3 +530,9 @@ void tTVPNativeBaseBitmap::ApplyFont()
 		GetCurrentRasterizer()->ApplyFont( this, false );
 	}
 }
+
+void tTVPNativeBaseBitmap::SetFont(const tTVPFont &font)
+{
+	Font = font;
+	FontChanged = true;
+}
