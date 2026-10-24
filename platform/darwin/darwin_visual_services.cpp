@@ -278,8 +278,12 @@ void TVPListDir(const std::string& folder, std::function<void(const std::string&
 
 #include "SystemControl.h"
 
-tTVPSystemControl* TVPSystemControl = nullptr;
-bool TVPSystemControlAlive = false;
+// The Windows application owns one of these and the engine reaches for it from
+// event code (TVPGetSystemEventDisabledState goes straight through it), so the
+// desktop hosts a real instance rather than a null pointer.
+static tTVPSystemControl gSystemControl;
+tTVPSystemControl* TVPSystemControl = &gSystemControl;
+bool TVPSystemControlAlive = true;
 
 // the engine's set of plug-in names; nothing loads any here
 std::set<ttstr> TVPRegisteredPlugins;

@@ -23,6 +23,7 @@ namespace
 		tjs_int Volume = 0;      // -10000 .. 0 dB, as the engine uses
 		tjs_int Pan = 0;
 		bool Playing = false;
+		bool Paused = false;
 		bool Looping = false;
 		bool Opened = false;
 		double Position = 0.0;
@@ -131,6 +132,25 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 		TJS_DENY_NATIVE_PROP_SETTER
 	}
 	TJS_END_NATIVE_PROP_DECL(playing)
+
+	TJS_BEGIN_NATIVE_PROP_DECL(paused)
+	{
+		TJS_BEGIN_NATIVE_PROP_GETTER
+		{
+			TJS_GET_NATIVE_INSTANCE(_this, WaveInstance);
+			*result = (tjs_int)(_this->Paused ? 1 : 0);
+			return TJS_S_OK;
+		}
+		TJS_END_NATIVE_PROP_GETTER
+		TJS_BEGIN_NATIVE_PROP_SETTER
+		{
+			TJS_GET_NATIVE_INSTANCE(_this, WaveInstance);
+			_this->Paused = (tjs_int)*param != 0;
+			return TJS_S_OK;
+		}
+		TJS_END_NATIVE_PROP_SETTER
+	}
+	TJS_END_NATIVE_PROP_DECL(paused)
 
 	TJS_BEGIN_NATIVE_PROP_DECL(looping)
 	{
