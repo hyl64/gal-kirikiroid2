@@ -444,12 +444,7 @@ tTJSNativeClass* TVPCreateNativeClass_MIDISoundBuffer()
 	return nullptr;
 }
 
-tTJSNativeClass* TVPCreateNativeClass_WaveSoundBuffer()
-{
-	// next: a minimal class that keeps what a script sets; KAG creates one at
-	// start-up, so answering nothing stops it here
-	return nullptr;
-}
+// TVPCreateNativeClass_WaveSoundBuffer lives in visual/darwin/SoundBuffer_Darwin.cpp
 
 tTJSNativeClass* TVPCreateNativeClass_BitmapLayerTreeOwner()
 {

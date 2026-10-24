@@ -773,6 +773,23 @@ KAG 在初始化时就会创建声音缓冲，所以需要给它一个最小实�
 `MenuItem`、`Window.menu`、`Timer`，注册了 `KAGParser`、`AsyncTrigger`；
 接下来是声音类。
 
+### 20i. WaveSoundBuffer 写成 → 下一个 `VideoOverlay`
+
+`visual/darwin/SoundBuffer_Darwin.cpp`：最小的波形缓冲类——`open`/`close`/`play`/
+`stop`/`pause`/`fade`，`volume`/`pan`/`looping`/`playing`/`position`/`totalTime`。
+**没有音频设备，所以状态记住、不出声**；KAG 启动时只创建和配置它。
+
+KAG 继续前进：
+
+```
+スクリプトの読み込みに 26ms かかりました
+(info) Use malloc for Bitmap
+initialize failed: Member "VideoOverlay" does not exist
+```
+
+**下一个缺口**：`VideoOverlay`（视频叠加层），也在 VCL 层；我们的桩返回空指针。
+同样需要一个最小实现（状态 + 不播视频）。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
