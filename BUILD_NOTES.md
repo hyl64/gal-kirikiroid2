@@ -755,6 +755,24 @@ initialize failed: Member "menu" does not exist
 **这类缺口的规律很清楚**：VCL 应用层提供的脚本可见类（`MenuItem`、`Timer`、
 可能还有 `Window` 的子类行为），桌面上要逐个补最小实现。每补一个 KAG 就往下走一段。
 
+### 20h. 连过三关：Timer → KAGParser → AsyncTrigger
+
+| 缺的东西 | 处理 |
+|---|---|
+| `Timer` | 新写 `visual/darwin/Timer_Darwin.cpp`（interval/enabled/mode/capacity/onTimer/start/stop，不真的计时） |
+| `KAGParser` | 引擎里已有实现（`utils/KAGParser.cpp`），只是 `krkrrun` 没注册 → 注册 |
+| `AsyncTrigger` | 引擎里已有（`base/EventIntf.cpp`）→ 注册 |
+
+**每过一关，KAG 就往前走一段**，而且能看到它在**开始分配位图**（`Use malloc for Bitmap`）——
+说明窗口/图层正在被真正创建。
+
+**下一个缺口**：`WaveSoundBuffer`（声音缓冲类）。我们之前把它做成返回空指针，
+KAG 在初始化时就会创建声音缓冲，所以需要给它一个最小实现（存状态、不播放）。
+
+**规律确认**：VCL/Windows 层提供的脚本可见类必须逐个补齐。目前补了
+`MenuItem`、`Window.menu`、`Timer`，注册了 `KAGParser`、`AsyncTrigger`；
+接下来是声音类。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。

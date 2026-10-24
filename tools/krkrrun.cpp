@@ -17,11 +17,13 @@
 
 #include "WindowIntf.h"
 #include "MenuItemIntf.h"
+#include "TimerIntf.h"
 #include "LayerIntf.h"
 #include "BitmapIntf.h"
 #include "LayerBitmapIntf.h"
 #include "SystemIntf.h"
 #include "StorageIntf.h"
+#include "EventIntf.h"
 #include "ScriptMgnIntf.h"
 #include "RectItf.h"
 #include "FontImpl.h"
@@ -212,6 +214,16 @@ int main(int argc, char** argv)
 	Register(global, TJS_W("Debug"), TVPCreateNativeClass_Debug());
 	Register(global, TJS_W("Plugins"), TVPCreateNativeClass_Plugins());
 	Register(global, TJS_W("MenuItem"), TVPCreateNativeClass_MenuItem());
+	Register(global, TJS_W("Timer"), TVPCreateNativeClass_Timer());
+	Register(global, TJS_W("AsyncTrigger"), TVPCreateNativeClass_AsyncTrigger());
+	// KAG's parser: the class that reads .ks scenarios
+	extern iTJSDispatch2* TVPCreateNativeClass_KAGParser();
+	if(iTJSDispatch2* parser = TVPCreateNativeClass_KAGParser())
+	{
+		tTJSVariant val(parser, nullptr);
+		parser->Release();
+		global->PropSet(TJS_MEMBERENSURE | TJS_IGNOREPROP, TJS_W("KAGParser"), nullptr, &val, global);
+	}
 
 	int status = 0;
 	try
