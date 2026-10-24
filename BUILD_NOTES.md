@@ -827,6 +827,30 @@ tTJSDictionaryNI::SaveStructuredData
 2. 我们的 `children` getter 返回的数组对象**每次都是新的、且立刻 Release**，
    很可能 `SaveStructuredData` 拿着它时已经失效 → 应当缓存数组并正确持有引用
 
+### 20l. 序列化层的两个可复现事实
+
+用最小脚本试 `saveStruct`（KAG 存配置用的那条路）：
+
+```tjs
+var d = %[]; d.a = 1;
+d.saveStruct("file:///tmp/saved.tjs");          → Member "saveStruct" does not exist
+Dictionary.saveStruct("file:///tmp/saved.tjs", d); → Invalid object context
+```
+
+**第一个**说明实例上没有这个方法（KAG 走的是类级调用）；
+**第二个**说明类级调用的参数/上下文约定与我们给的不符。
+
+再结合崩溃栈：
+
+```
+tTJSDictionaryNI::SaveStructuredData
+  ← tTJSDictionaryClass::NCM_saveStruct::Process
+```
+
+可以确定：**KAG 确实调到了 `NCM_saveStruct`，并在 `SaveStructuredData` 里崩了**。
+下一步就是拿 `NCM_saveStruct::Process` 的参数解析对照它的实现，把「Invalid object
+context」和崩溃这两个现象对上——两者很可能是同一个约定没满足。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
