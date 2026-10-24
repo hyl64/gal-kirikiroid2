@@ -803,6 +803,30 @@ loop/audioBalance/audioVolume/enabledAudioStream/numberOfAudioStream/position/to
 在属性 getter 里裸调不安全。正确做法是用 `iTJSDispatch2* global` 上的 TJS 数组类来
 创建（或者缓存一个数组对象）。下轮按这个方向修。
 
+### 20k. `children` 有了新进展，但暴露出更深的一层：`SaveStructuredData` 崩溃
+
+把 `children` 属性加回去（返回 `TJSCreateArrayObject()` 的数组）后，KAG **通过了那一关**，
+但紧接着**段错误**。崩溃栈（macOS crash report）第一次指向了别的地方：
+
+```
+tTJSDictionaryNI::SaveStructuredData
+  ← tTJSDictionaryClass::NCM_saveStruct::Process
+    ← tTJSNativeClassMethod::FuncCall
+      ← ...
+```
+
+即 KAG 在**保存结构化字典**（`Dictionary.saveStruct`，KAG 存配置/存档用的）时崩了。
+这是 TJS2 自己的序列化代码，在处理我们构造的对象时踩到空指针。
+
+**这轮的处理**：`children` 暂时回退，保证构建与所有工具全绿（`krkrblit` 全过）。
+`children` 的正确实现必须和 `SaveStructuredData` 的崩溃一起解决——两者都涉及
+「TJS 对象在原生属性里的生命周期」。
+
+**下一步**（具体）：
+1. 读 `tTJSDictionaryNI::SaveStructuredData`，看它遍历对象时假设了什么
+2. 我们的 `children` getter 返回的数组对象**每次都是新的、且立刻 Release**，
+   很可能 `SaveStructuredData` 拿着它时已经失效 → 应当缓存数组并正确持有引用
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。

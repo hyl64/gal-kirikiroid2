@@ -179,6 +179,8 @@ tTJSNC_MenuItem_Darwin::tTJSNC_MenuItem_Darwin()
 	TJS_END_NATIVE_PROP_DECL(caption)
 
 
+
+
 	TJS_BEGIN_NATIVE_PROP_DECL(group)
 	{
 		TJS_BEGIN_NATIVE_PROP_GETTER
