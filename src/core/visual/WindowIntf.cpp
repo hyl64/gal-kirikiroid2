@@ -23,6 +23,9 @@
 #include "VideoOvlIntf.h"
 #include "LayerManager.h"
 #include "BasicDrawDevice.h"
+
+// provided by the platform: the class of the draw device a window gets
+extern class tTJSNativeClass* TVPCreateDrawDeviceClass();
 #include "EventImpl.h"
 
 #include "Application.h"
@@ -167,7 +170,9 @@ tTJSNI_BaseWindow::Construct(tjs_int numparams, tTJSVariant **param,
 		iTJSDispatch2 * newobj = NULL;
 		try
 		{
-			cls = new tTJSNC_BasicDrawDevice();
+			// the desktop back end supplies its own device class: the
+			// original's is Direct3D, which macOS does not have
+			cls = TVPCreateDrawDeviceClass();
 			if(TJS_FAILED(cls->CreateNew(0, NULL, NULL, &newobj, 0, NULL, cls)))
 				TVPThrowExceptionMessage(TVPInternalError,
 					TJS_W("tTJSNI_Window::Construct"));

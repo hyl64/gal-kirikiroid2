@@ -106,7 +106,7 @@ add_library(krkr STATIC
 	${PLATFORM}/darwin/darwin_config.cpp ${PLATFORM}/darwin/darwin_visual_services.cpp
 	${CORE}/visual/darwin/LayerBitmapImpl.cpp ${CORE}/visual/darwin/TextDraw_Darwin.cpp
 	${CORE}/visual/darwin/FontRasterizers_Darwin.cpp ${CORE}/visual/darwin/ResampleImage_Soft.cpp
-	${CORE}/visual/darwin/DrawDevice_Darwin.cpp
+	${CORE}/visual/darwin/DrawDevice_Darwin.cpp ${CORE}/visual/darwin/DrawDeviceClass_Darwin.cpp
 	${PLATFORM}/compat/renderer/CCTexture2D.cpp
 )
 target_include_directories(krkr PUBLIC ${KRKR_INCLUDES})
@@ -134,3 +134,4 @@ krkr_tool(krkrscene)   # compose background, window and text
 krkr_tool(krkrbitmap)  # the bitmap API
 krkr_tool(krkrpresent) # engine texture onto a window
 krkr_tool(krkrtext)    # text onto a bitmap
+krkr_tool(krkrrun)     # run a script against the engine classes
