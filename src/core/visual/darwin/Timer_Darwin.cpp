@@ -214,8 +214,17 @@ void TVPDarwinTickTimers()
 		const auto now = clock::now();
 		if(now < t.Next)
 			continue;
-		const int interval = t.Interval != nullptr && *t.Interval > 0 ? *t.Interval : 1000;
+		// a zero interval means "as soon as possible" to a script that drives a
+		// loop with it, which is how KAG's conductor keeps time
+		const int interval = t.Interval != nullptr && *t.Interval > 0 ? *t.Interval : 1;
 		t.Next = now + std::chrono::milliseconds(interval);
+		if(getenv("KRKR_DEBUG_TIMER"))
+		{
+			fprintf(stderr, "[timer] firing (enabled=%d interval=%d handler=%p)\n",
+				(int)(t.Enabled ? *t.Enabled : 0), (int)(t.Interval ? *t.Interval : 0),
+				(void*)t.Handler);
+			fflush(stderr);
+		}
 		if(t.Handler != nullptr && t.Handler->Type() == tvtObject)
 		{
 			tTJSVariantClosure clo = t.Handler->AsObjectClosureNoAddRef();
