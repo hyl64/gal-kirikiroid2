@@ -201,6 +201,13 @@ iTVPStorageMedia* TVPCreateFileMedia()
 	return new tTVPFileMedia();
 }
 
+// The Storages class itself is the engine's (base/StorageIntf.cpp); only its
+// factory lives in the platform layer upstream, so this is that one line.
+tTJSNativeClass* TVPCreateNativeClass_Storages()
+{
+	return new tTJSNC_Storages();
+}
+
 // ---------------------------------------------------------------------------
 // the archive factory
 // ---------------------------------------------------------------------------

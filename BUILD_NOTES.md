@@ -94,6 +94,28 @@ exit 0
 已经把 7z 分支改成走 libarchive 了，所以桌面构建用 `KRKR_DESKTOP_UNPACK` 把那两段
 死代码编译掉，zip/7z/rar 统一走 libarchive，XP3 走引擎原生读取器。
 
+### 4. 脚本层 ↔ 存储层 ↔ 归档层 打通 → `krkrscript` ✅
+引擎的脚本通过 TVP 扩展类访问文件，`Storages` 就是那个对象。把它们接起来之后，
+**TJS2 脚本可以直接查询 XP3 归档里的文件**（日志里能看到 XP3 读取器真的打开归档）：
+
+```
+$ ./build/krkrscript tests/storage.tjs
+plain file exists:    1
+plain file missing:   0
+in archive, present:  1     ← file:///tmp/test.xp3>a.txt
+in archive, nested:   1     ← file:///tmp/test.xp3>dir/c.bin
+in archive, absent:   0
+done
+exit 0
+```
+
+实现要点：
+- `Storages` 类本体在上游 `base/StorageIntf.cpp`（已编译），工厂函数在 `StorageImpl.cpp`
+  → 我们在 `platform/darwin_host.cpp` 补了那一个函数体（`new tTJSNC_Storages()`）
+- 主机启动时把当前目录加入 auto path（`TVPAddAutoPath`），等价于引擎的启动流程
+- 已知限制：引擎会规范化掉相对名里的 `./`，所以**归档内成员要用绝对路径**
+  （`file:///abs/path/game.xp3>inner.txt`）；窗口层落地后由游戏目录解析补上
+
 ## 剩余工作（按依赖顺序）
 1. ~~XP3 归档层~~ ✅
 2. **TVP 扩展类**（`Storage`/`Scripts`/`Window`/`System` 的完整版）——KAG 脚本直接调它们

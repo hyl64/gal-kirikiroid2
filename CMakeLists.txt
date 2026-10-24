@@ -108,6 +108,12 @@ else()
 	message(STATUS "OpenMP not found: TVPExecThreadTask runs single-threaded")
 endif()
 
+# ---- krkrscript: a TJS2 host with the storage layer attached -----------------
+add_executable(krkrscript tools/krkrscript.cpp)
+target_link_libraries(krkrscript PRIVATE krkrbase)
+target_include_directories(krkrscript PRIVATE ${KRKR_INCLUDES}
+	${CMAKE_CURRENT_SOURCE_DIR}/platform)
+
 # ---- krkrpack: list and extract an XP3 archive -------------------------------
 add_executable(krkrpack tools/krkrpack.cpp)
 target_link_libraries(krkrpack PRIVATE krkrbase)
