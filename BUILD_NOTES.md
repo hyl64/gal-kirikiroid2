@@ -492,7 +492,26 @@ $ ./build/krkrrun tests/layer.tjs
 （即 `biSizeImage`，BI_RGB 下为 0 或垃圾值，实测 32×32 得到 1.1GB）；
 改成按 `((w*bpp+31)/32)*4 * h` 自己算。这解释了此前一次异常的巨大尺寸。
 
-**下一步**：在 `tTJSNI_BaseLayer` 构造函数每一行之间加打印，定位到具体语句。
+**⚠️ 元凶（影响之前多轮排查）**：`stderr` 一旦接到**管道**就是全缓冲，而进程用 `_exit`
+退出时缓冲内容**全部丢失**。所以前几轮「静默退出、没有报错」的假象，很大程度是
+**诊断输出被吞了**。加了 `fflush(stderr)` 并重定向到文件之后，真相立刻清楚：
+
+```
+[layer] Construct parent=0x0 params=2      ← 主图层
+[Information] base ok
+[ctor] a1 temp holder ... a6 rect          ← 子图层的构造函数【完整跑完】
+<malloc for Bitmap>
+→ exit=1
+```
+
+**结论修正**：子图层的 **构造函数是完整执行的**，进程死在其后的 `Construct` 之前
+（`Construct` 开头的打印没出现）。而 `Construct` 之前只有 TJS 的原生类调用与
+参数解析——所以嫌疑在 **`tTJSNI_BaseLayer::Construct` 的参数解析段**（`param[0]`
+按 Layer 取实例那段），或者 TJS 的原生类构造回调。
+
+**教训**：诊断输出先 `fflush`，再判断「有没有报错」。我因此白追了三轮。
+
+**下一步**：在 `Construct` 的**最开头第一行**加打印（现在那行在参数解析之后）。
 
 ### 18b-old. 原始记录（措辞已由上节纠正）
 准备 KAG 形状的引导脚本（`tests/minikag/`）时撞到一个具体障碍：

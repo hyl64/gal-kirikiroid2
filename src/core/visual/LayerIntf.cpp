@@ -1,4 +1,5 @@
 //---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 /*
 	TVP2 ( T Visual Presenter 2 )  A script authoring tool
 	Copyright (C) 2000 W.Dee <dee@kikyou.info> and contributors
@@ -43,6 +44,16 @@
 #include "RenderManager.h"
 #include <cstdlib>
 #include "FontImpl.h"
+
+// a trace for the layer constructor: it is where a child layer stops
+static void DBG(const char* where)
+{
+	if(getenv("KRKR_DEBUG_LAYER") != nullptr)
+	{
+		fprintf(stderr, "[ctor] %s\n", where);
+		fflush(stderr);
+	}
+}
 
 extern void TVPSetFontRasterizer( tjs_int index );
 extern tjs_int TVPGetFontRasterizer();
@@ -324,15 +335,18 @@ tTJSNI_BaseLayer::tTJSNI_BaseLayer()
 {
 	// creates bitmap holder
 	tTVPTempBitmapHolder::AddRef();
+	DBG("a1 temp holder");
 
 	// object lifetime stuff
 	Owner = NULL;
+	DBG("a2 owner");
 	ActionOwner.ObjThis = ActionOwner.Object = NULL;
 	Shutdown = false;
 	CompactEventHookInit = false;
 
 	// interface to layer manager
 	Manager = NULL;
+	DBG("a3 manager");
 
 	// tree management
 	Parent = NULL;
@@ -343,10 +357,12 @@ tTJSNI_BaseLayer::tTJSNI_BaseLayer()
 	ChildrenArrayValid = false;
 	ArrayClearMethod = NULL;
 	OrderIndex = 0;
+	DBG("a4 order");
 	OverallOrderIndex = 0;
 	ChildrenOrderIndexValid = false;
 	AbsoluteOrderMode = false; // initially relative mode
 	AbsoluteOrderIndex = 0;
+	DBG("a5 absorder");
 
 	// layer type management
 	DisplayType = Type = ltAlpha;
@@ -358,6 +374,7 @@ tTJSNI_BaseLayer::tTJSNI_BaseLayer()
 	Rect.left = 0;
 	Rect.top = 0;
 	Rect.right = 32;
+	DBG("a6 rect");
 	Rect.bottom = 32;
 
 	// input event / hit test management
