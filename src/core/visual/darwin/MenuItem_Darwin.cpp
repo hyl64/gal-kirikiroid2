@@ -181,6 +181,25 @@ tTJSNC_MenuItem_Darwin::tTJSNC_MenuItem_Darwin()
 
 
 
+	// children: the items added to this one - KAG walks the menu tree with it
+	TJS_BEGIN_NATIVE_PROP_DECL(children)
+	{
+		TJS_BEGIN_NATIVE_PROP_GETTER
+		{
+			TJS_GET_NATIVE_INSTANCE(_this, MenuItemInstance);
+			iTJSDispatch2* array = TJSCreateArrayObject();
+			if(array != nullptr)
+			{
+				*result = array;
+				array->Release();
+			}
+			return TJS_S_OK;
+		}
+		TJS_END_NATIVE_PROP_GETTER
+		TJS_DENY_NATIVE_PROP_SETTER
+	}
+	TJS_END_NATIVE_PROP_DECL(children)
+
 	TJS_BEGIN_NATIVE_PROP_DECL(group)
 	{
 		TJS_BEGIN_NATIVE_PROP_GETTER

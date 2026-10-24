@@ -738,6 +738,14 @@ void TVPRunEngineInitScript(tTJS* engine)
 {
 	if(engine == nullptr)
 		return;
+	// The stream gateways are function pointers the TJS side calls through, and
+	// the application's start-up assigns them.  Without them saveStruct and the
+	// array serialisers call through null - which is what the framework hit.
+	TJSCreateTextStreamForRead = TVPCreateTextStreamForRead;
+	TJSCreateTextStreamForWrite = TVPCreateTextStreamForWrite;
+	TJSCreateBinaryStreamForRead = TVPCreateBinaryStreamForRead;
+	TJSCreateBinaryStreamForWrite = TVPCreateBinaryStreamForWrite;
+
 	engine->ExecScript(ttstr(TVPInitTJSScript));
 }
 

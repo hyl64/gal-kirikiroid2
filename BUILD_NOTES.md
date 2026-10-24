@@ -851,6 +851,31 @@ tTJSDictionaryNI::SaveStructuredData
 下一步就是拿 `NCM_saveStruct::Process` 的参数解析对照它的实现，把「Invalid object
 context」和崩溃这两个现象对上——两者很可能是同一个约定没满足。
 
+### 21. 🎉 KAG 主窗口建成 + 剧本被加载（引擎②的里程碑）
+
+**第二个「同类根因」**：`TJSCreateTextStreamForWrite` 等**四个流工厂是函数指针**，
+只在 `TVPInitScriptEngine()` 里赋值。工具自建引擎 → 指针为空 → `saveStruct`
+（以及数组序列化）调用空指针崩溃。在 `TVPRunEngineInitScript()` 里一并赋值后，
+`saveStruct` 正常写出 `(const) %[ "a" => 1, ... ]`。
+
+**然后 KAG 一路走到底**：
+
+```
+スクリプトの読み込みに 27ms かかりました
+(info) Use malloc for Bitmap
+KAGMainWindow のコンストラクタで 6ms かかりました        ← 主窗口构造完成！
+================================================================================
+Scenario loaded : first.ks                              ← 剧本加载成功！
+[Information] initialize failed: Member "paused" does not exist
+```
+
+**这是引擎② 第一次做到**：
+- KAG 的主窗口 `KAGMainWindow` 构造成功（建窗口 + 全套图层 + 菜单 + 声音）
+- **`first.ks` 剧本被真正加载**
+
+也就是说，**距离屏幕上出现「こんにちは。」只差最后几个成员**。下一个卡点：
+`paused`（KAG 的自动播放/暂停状态，属于 Window 或 SoundBuffer 的属性）。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
