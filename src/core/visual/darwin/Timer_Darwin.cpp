@@ -23,7 +23,7 @@ namespace
 	{
 		bool* Enabled = nullptr;
 		tjs_int* Interval = nullptr;
-		tTJSVariant* Handler = nullptr;
+		tTJSVariant** Handler = nullptr; // watches the instance's pointer
 		std::chrono::steady_clock::time_point Next;
 	};
 	std::vector<RunningTimer> gRunning;
@@ -51,7 +51,7 @@ namespace
 		~TimerInstance() override
 		{
 			for(size_t i = 0; i < gRunning.size(); i++)
-				if(gRunning[i].Handler == Handler)
+				if(gRunning[i].Handler == &Handler)
 				{
 					gRunning.erase(gRunning.begin() + i);
 					break;
@@ -63,19 +63,29 @@ namespace
 			iTJSDispatch2* tjs_obj) override
 		{
 			(void)tjs_obj;
+
+			// Timer(handler, mode) - the handler is the *first* argument and the
+			// second is a mode string ('' means call the function directly)
+			if(getenv("KRKR_DEBUG_TIMER"))
+			{
+				fprintf(stderr, "[timer] Construct numparams=%d type0=%d\n", (int)numparams,
+					numparams >= 1 ? (int)param[0]->Type() : -1);
+				fflush(stderr);
+			}
+			// any callable: a function object, or a string naming one
+			if(numparams >= 1 && param[0]->Type() != tvtVoid)
+				Handler = new tTJSVariant(*param[0]);
+
+			// registered after the handler is stored: the entry keeps a pointer to
+			// it, and an entry taken before the assignment would stay null
 			{
 				RunningTimer entry;
 				entry.Enabled = &Enabled;
 				entry.Interval = &Interval;
-				entry.Handler = Handler;
+				entry.Handler = &Handler;
 				entry.Next = std::chrono::steady_clock::now() + std::chrono::milliseconds(Interval);
 				gRunning.push_back(entry);
 			}
-			// Timer(handler, mode) - the handler is the *first* argument and the
-			// second is a mode string ('' means call the function directly)
-			// any callable: a function object, or a string naming one
-			if(numparams >= 1 && param[0]->Type() != tvtVoid)
-				Handler = new tTJSVariant(*param[0]);
 			return TJS_S_OK;
 		}
 
@@ -223,12 +233,12 @@ void TVPDarwinTickTimers()
 		{
 			fprintf(stderr, "[timer] firing (enabled=%d interval=%d handler=%p)\n",
 				(int)(t.Enabled ? *t.Enabled : 0), (int)(t.Interval ? *t.Interval : 0),
-				(void*)t.Handler);
+				(void*)(t.Handler ? *t.Handler : nullptr));
 			fflush(stderr);
 		}
-		if(t.Handler != nullptr && t.Handler->Type() == tvtObject)
+		if(t.Handler != nullptr && *t.Handler != nullptr && (*t.Handler)->Type() != tvtVoid)
 		{
-			tTJSVariantClosure clo = t.Handler->AsObjectClosureNoAddRef();
+			tTJSVariantClosure clo = (*t.Handler)->AsObjectClosureNoAddRef();
 			tTJSVariant result;
 			try
 			{
