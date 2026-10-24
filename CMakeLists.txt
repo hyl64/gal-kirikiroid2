@@ -144,6 +144,12 @@ target_include_directories(krkrvis PUBLIC ${PNG_INCLUDE_DIRS} ${FREETYPE_INCLUDE
 target_link_libraries(krkrvis PUBLIC ${FREETYPE_LIBRARIES})
 target_link_directories(krkrvis PUBLIC ${FREETYPE_LIBRARY_DIRS})
 
+add_executable(krkrscene tools/krkrscene.cpp)
+target_link_libraries(krkrscene PRIVATE krkrvis ${SDL2_LIBRARIES})
+target_link_directories(krkrscene PRIVATE ${SDL2_LIBRARY_DIRS})
+target_include_directories(krkrscene PRIVATE ${KRKR_INCLUDES} ${SDL2_INCLUDE_DIRS}
+	${CMAKE_CURRENT_SOURCE_DIR}/platform)
+
 add_executable(krkrfont tools/krkrfont.cpp)
 target_link_libraries(krkrfont PRIVATE krkrvis ${SDL2_LIBRARIES})
 target_link_directories(krkrfont PRIVATE ${SDL2_LIBRARY_DIRS})

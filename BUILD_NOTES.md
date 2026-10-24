@@ -198,6 +198,23 @@ $ ./build/krkrfont /tmp/font2.bmp 48 "ナルキッソス"
 `Pitch == BlackBoxX`），不是 4 字节；只有 `FullColored` 字形才是 4 字节 BGRA。
 按 4 字节读会得到重影糊字。
 
+### 8. 合成完整画面 → `krkrscene` ✅
+三块引擎部件合体，**像素全部出自引擎自己**：
+
+```bash
+./build/krkrscene /tmp/scene.xp3 bg.png scene.bmp "この空の向こうに、何があるんだろう。" 120 0 40
+# background: 1920x1080 from /tmp/scene.xp3>bg.png
+# text: ... at (120,940), 40px
+```
+
+- 背景：`TVPLoadPNG` 从 XP3 里解码（存储层）
+- 消息窗：`TVPAlphaBlend_d`（tvpgl）半透明混合
+- 台词：FreeType 字体栈栅格化 → 覆盖率当 alpha → `TVPAlphaBlend_d` 叠到背景
+
+产物见 `screenshots/scene-composed.png`（1920×1080，真实游戏背景 + 日文台词）。
+这一张图说明引擎②的图像、字体、混合三层都是通的——缺的只剩「谁来调度这些层」，
+也就是窗口层与 KAG 运行时。
+
 ## 窗口层的真实工作量（下一步）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：
