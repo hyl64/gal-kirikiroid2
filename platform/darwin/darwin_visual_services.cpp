@@ -328,6 +328,8 @@ iTJSDispatch2* TVPCreateMenuItemObject(iTJSDispatch2* window)
 
 tTJSNativeClass* TVPCreateNativeClass_VideoOverlay()
 {
+	// next: a minimal overlay class (rectangle, visible, nothing playing); KAG
+	// creates one at start-up and stops here
 	return nullptr;
 }
 
