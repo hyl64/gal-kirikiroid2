@@ -566,6 +566,37 @@ fail: execStorage -> Internal error    ← 卡在这里
 1. 让 `TVPGetPlacedPath` / 存储搜索路径包含游戏根目录（KiriKiri 启动时做的其中一件事）
 2. 再跑 `startup.tjs`，把 `Internal error` 变成具体的下一步错误
 
+### 20. 真实 KAG3 初始化跑起来了 ✅（引擎②第一次跑真实框架）
+
+给 `krkrrun` 补上引擎启动时该做的事——**把游戏根目录加入存储搜索路径**：
+
+```cpp
+TVPAddAutoPath(ttstr("file://" + cwd + "/"));
+TVPSetCurrentDirectory(...);
+```
+
+结果：
+```
+Storages.isExistentStorage("system/Initialize.tjs") → 1        ← 之前解析不了
+```
+
+**然后真实 KAG3 的初始化脚本真的跑起来了**：
+
+```
+03:38:52 OS : macOS (macOS)
+03:38:52 KAG : 3.32 stable rev. 2          ← KAG 自己报的版本
+03:38:52 Kirikiri : 2.32.0.0
+03:38:52 (info) Rebuilding Auto Path Table ...
+03:38:52 (info) Total 50 file(s) found, 43 file(s) activated. (1ms)
+```
+
+**这意味着**：引擎② 能加载真实的 KAG3 框架脚本，KAG 能识别自己跑在
+Kirikiri 2.32 上、能扫描游戏目录、能建立自动路径表。
+
+**卡在下一步**：`system/Initialize.tjs:200` 的 `KAGLoadScript("MainWindow.tjs")`
+——那会构造 `KAGMainWindow`（建窗口、建图层、注册大量属性），进程就停在那里。
+这是 KAG 与引擎最重的接触面，也是下一个要啃的具体目标。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。

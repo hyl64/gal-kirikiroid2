@@ -27,6 +27,7 @@
 #include "DebugIntf.h"
 #include "PluginImpl.h"
 #include "tvpgl.h"
+#include "StorageIntf.h"
 #include "DrawDevice.h"
 #include "LayerIntf.h"
 #include "LayerBitmapIntf.h"
@@ -168,6 +169,18 @@ int main(int argc, char** argv)
 	// the pixel pipeline's function table: without it the first blitter call
 	// jumps through a null pointer, which is how the layer's first fill died
 	TVPInitTVPGL();
+
+	// The engine's own start-up makes the game's folder searchable, so a script's
+	// relative storage name ("system/Initialize.tjs") resolves.  KAG depends on it.
+	{
+		std::string root = "file://";
+		char cwd[1024];
+		if(getcwd(cwd, sizeof cwd) != nullptr)
+			root += cwd;
+		root += "/";
+		TVPAddAutoPath(ttstr(root.c_str()));
+		TVPSetCurrentDirectory(ttstr(root.c_str()));
+	}
 
 	ConsoleOutput console;
 	tTJS* tjs = new tTJS();
