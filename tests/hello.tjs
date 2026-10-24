@@ -31,7 +31,7 @@ var m = re.exec("contact: dee@kikyou.info");
 System.inform("regexp: " + m[0] + " -> " + m[1] + "/" + m[2] + "." + m[3]);
 
 System.inform("number: " + 255 + " + 1 = " + (255 + 1));
-System.inform("platform: " + System.platform);
+System.inform("os: " + System.osName);
 
 try {
 	throw new Exception("thrown on purpose");
