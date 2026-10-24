@@ -39,6 +39,7 @@ set(KRKR_INCLUDES
 	${CORE}/visual/win32
 	${CORE}/visual/gl
 	${CORE}/visual/ogl
+	${CORE}/visual/darwin
 	${CORE}/movie
 )
 
@@ -54,6 +55,7 @@ add_compile_definitions(
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ONIG REQUIRED oniguruma)
 pkg_check_modules(SDL2 REQUIRED sdl2)
+pkg_check_modules(PNG REQUIRED libpng)
 
 # ---- TJS2: the script engine -------------------------------------------------
 # Everything under src/core/tjs2; it needs the message catalogue and a handful
@@ -121,10 +123,21 @@ endif()
 # is the next piece of work.
 add_library(krkrvis STATIC
 	${CORE}/visual/tvpgl.cpp
-	${CORE}/visual/gl/blend_function.cpp)
+	${CORE}/visual/gl/blend_function.cpp
+	${CORE}/visual/LoadPNG.cpp
+	${CORE}/visual/LoadTLG.cpp
+	${CORE}/visual/darwin/LayerBitmapImpl.cpp)
 target_include_directories(krkrvis PUBLIC ${KRKR_INCLUDES}
 	${CMAKE_CURRENT_SOURCE_DIR}/platform)
-target_link_libraries(krkrvis PUBLIC krkrbase)
+target_link_libraries(krkrvis PUBLIC krkrbase ${PNG_LIBRARIES})
+target_link_directories(krkrvis PUBLIC ${PNG_LIBRARY_DIRS})
+target_include_directories(krkrvis PUBLIC ${PNG_INCLUDE_DIRS})
+
+add_executable(krkrview tools/krkrview.cpp)
+target_link_libraries(krkrview PRIVATE krkrvis ${SDL2_LIBRARIES})
+target_link_directories(krkrview PRIVATE ${SDL2_LIBRARY_DIRS})
+target_include_directories(krkrview PRIVATE ${KRKR_INCLUDES} ${SDL2_INCLUDE_DIRS}
+	${CMAKE_CURRENT_SOURCE_DIR}/platform)
 
 add_executable(krkrblit tools/krkrblit.cpp)
 target_link_libraries(krkrblit PRIVATE krkrvis)

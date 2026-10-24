@@ -141,6 +141,35 @@ all passed: 0 check(s) failed
 - `TVPAlphaBlend` 是「目标无 alpha」的变体，**不保留目标 alpha**；带 alpha 的目标用 `TVPAlphaBlend_d`
 - 定点运算 `((s-d)*a)>>8` 会使结果比精确值低 1，断言必须容差 1
 
+### 6. 图像解码 → 显示 → 逐像素验证 → `krkrview` ✅
+把「从 XP3 里取一张图、用引擎自己的解码器解开、显示出来」这条链跑通了：
+
+```bash
+./build/krkrview /tmp/view.xp3 img.png out.bmp
+# decoded 513x55 from file:///tmp/view.xp3>img.png
+```
+
+**验证**（用 BGI 体验版解出的一张带 alpha 的 PNG 装进 XP3，再用引擎解码器解回来，
+按原始字节比对）：
+
+```
+raw bytes: 112860 for 513x55
+  as BGRA: 4431/28215 differ
+  as RGBA: 0/28215 differ   ← MATCH
+```
+
+### 重要发现：引擎像素格式是 ABGR8888，不是 ARGB8888
+引擎的 `tjs_uint32` 像素是 **0xAABBGGRR**（alpha 在高字节，然后 B、G、R）。
+内存里（小端）是 R,G,B,A —— 对应 SDL 的 **`SDL_PIXELFORMAT_ABGR8888`**。
+我最初按名字猜成 ARGB8888，结果红蓝互换；靠原始字节比对才定论。
+**这一条对后面整个渲染层都关键。**
+
+### 位图层第一片：`src/core/visual/darwin/LayerBitmapImpl.cpp`
+上游的位图把像素存在 `iTVPTexture2D` 里（类本身只有度量与扫描线），所以先实现
+了委托给纹理的那几个方法（GetWidth/GetHeight/GetScanLine/GetScanLineForWrite/
+GetPitchBytes）+ 解码器要用的 `TVPClearGraphicCache()` 空钩子。
+解码器因此可以链接；完整的位图层（文字/字体/绘制）仍待补。
+
 ## 窗口层的真实工作量（下一步）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：
