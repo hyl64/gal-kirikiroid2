@@ -59,9 +59,43 @@ Windows 在 `environ/Application.cpp` —— 我们给 macOS 写了自己的那�
 结论：老游戏脚本没问题；**2013 年后的新 KAG 脚本可能依赖 krkrz 的语法**，
 到时候要么走 krkrz 分支，要么加语法补丁。
 
+### 3. XP3 归档层 → `krkrpack`（arm64 原生）✅ 已完成并验证
+游戏的全部资源都在 `data.xp3` 里，所以这是拿到游戏内容的第一步，而且不需要窗口。
+
+```bash
+./build/krkrpack list    game/data.xp3
+./build/krkrpack extract game/data.xp3 out/
+```
+
+**验证方式（无游戏数据的自证）**：用 `tests/make_xp3.py` 造一个符合格式的
+XP3，再用 krkrpack 列出/解包，与源文件逐字节比对：
+
+```
+3 file(s) in file:///tmp/test.xp3
+        11  a.txt
+        33  b.txt
+      4000  dir/c.bin
+--- 3 file(s), 4044 byte(s) uncompressed
+a.txt ✓ 一致   b.txt ✓ 一致   dir/c.bin ✓ 一致（4KB 随机二进制）
+exit 0
+```
+
+为此补齐的「平台层」（上游在各平台各写一份，tarball 里没有）：
+- `platform/darwin/Platform.cpp` — `environ/Platform.h` 那 28 个函数：内存统计
+  (sysctl + host_statistics64)、消息框（无窗口时走 stderr）、目录/文件辅助、IME、
+  `TVP_stat`/`TVP_utime`、语言
+- `platform/darwin_host.cpp` — 存储层：`tTVPFileMedia`（"file://" 媒体，10 个方法，
+  POSIX 实现）、`tTVPFileStream`、`TVPOpenArchive`（嗅探 XP3 签名）、
+  `TVPGetVersion`/`TVPGetCommandLine`/`TVPAddAtExitHandler`、`tTVPApplication::PrintConsole`
+- `platform/compat/Protect.h` — win32 反调试子系统在桌面构建里是空操作
+- `platform/compat/libarchive/` — Android NDK 头布局的兼容软链（brew 的 libarchive 是 keg-only）
+
+**依赖处理**：`UtilStreams.cpp` 里 7z/unrar 两条路径需要 vendored 库，但上游自己
+已经把 7z 分支改成走 libarchive 了，所以桌面构建用 `KRKR_DESKTOP_UNPACK` 把那两段
+死代码编译掉，zip/7z/rar 统一走 libarchive，XP3 走引擎原生读取器。
+
 ## 剩余工作（按依赖顺序）
-1. **XP3 归档层** → `krkrpack` 工具（列目录/解包）。这是拿到游戏资源的第一步，
-   而且**不需要窗口**，可独立验证。相关源码在 `src/core/base/XP3Archive.cpp`。
+1. ~~XP3 归档层~~ ✅
 2. **TVP 扩展类**（`Storage`/`Scripts`/`Window`/`System` 的完整版）——KAG 脚本直接调它们
 3. **窗口 + 渲染**：用 SDL2 替换 cocos2d 那 2448 行，渲染用 `visual/ogl/`
 4. **音频**：`sound/` 的 WaveIntf 需要 darwin 实现（SDL2 audio 或 CoreAudio）

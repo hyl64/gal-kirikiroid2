@@ -37,12 +37,15 @@ set(KRKR_INCLUDES
 	${CORE}/sound/win32
 	${CORE}/visual
 	${CORE}/visual/win32
+	${CORE}/visual/gl
+	${CORE}/visual/ogl
 	${CORE}/movie
 )
 
 # The old sources predate the warnings clang grew since; errors stay errors.
 add_compile_options(-w)
 add_compile_definitions(
+	KRKR_DESKTOP_UNPACK
 	TJS_TEXT_OUT_CRLF
 	__STDC_CONSTANT_MACROS
 	USE_UNICODE_FSTRING
@@ -62,6 +65,54 @@ add_library(tjs2 STATIC ${TJS2_SRC})
 target_include_directories(tjs2 PUBLIC ${KRKR_INCLUDES} ${ONIG_INCLUDE_DIRS})
 target_link_libraries(tjs2 PUBLIC ${ONIG_LIBRARIES})
 target_link_directories(tjs2 PUBLIC ${ONIG_LIBRARY_DIRS})
+
+# ---- krkrbase: the archive and storage layer ----------------------------------
+# The files of src/core/base that only need the system: the storage interface,
+# the archive readers (XP3, TAR), the streams and the character set.  The
+# runtime pieces (EventIntf, SystemIntf, SysInitIntf, ScriptMgnIntf) belong to
+# the window layer and wait for it.  libarchive's header layout differs from
+# the Android one the sources expect, so platform/compat holds the shim.
+file(GLOB KRKRBASE_SRC
+	${CORE}/base/BinaryStream.cpp
+	${CORE}/base/CharacterSet.cpp
+	${CORE}/base/PluginIntf.cpp
+	${CORE}/base/StorageIntf.cpp
+	${CORE}/base/TARArchive.cpp
+	${CORE}/base/TextStream.cpp
+
+	${CORE}/base/UtilStreams.cpp
+	${CORE}/base/XP3Archive.cpp
+	${CORE}/msg/MsgIntf.cpp
+	${CORE}/utils/DebugIntf.cpp
+	${CORE}/utils/*.cpp
+	${CORE}/utils/win32/DebugImpl.cpp
+	${CORE}/utils/win32/ThreadImpl.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/platform/darwin/Platform.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/platform/darwin_host.cpp
+	${CORE}/utils/win32/ThreadImpl.cpp
+)
+file(GLOB KRKRBASE_ENC ${CORE}/utils/encoding/*.c)
+add_library(krkrbase STATIC ${KRKRBASE_SRC} ${KRKRBASE_ENC})
+target_include_directories(krkrbase PUBLIC ${KRKR_INCLUDES} ${CORE}/environ
+	${CMAKE_CURRENT_SOURCE_DIR}/platform/darwin
+	${CMAKE_CURRENT_SOURCE_DIR}/platform
+	${CMAKE_CURRENT_SOURCE_DIR}/platform/compat
+	/opt/homebrew/include)
+find_package(OpenMP)
+target_link_libraries(krkrbase PUBLIC tjs2 z archive)
+if(OpenMP_CXX_FOUND)
+	target_link_libraries(krkrbase PUBLIC OpenMP::OpenMP_CXX)
+else()
+	# without OpenMP the parallel-for runs on one thread, which is correct,
+	# just slower: USING_THREADPOOL11 is off and omp pragmas are ignored
+	message(STATUS "OpenMP not found: TVPExecThreadTask runs single-threaded")
+endif()
+
+# ---- krkrpack: list and extract an XP3 archive -------------------------------
+add_executable(krkrpack tools/krkrpack.cpp)
+target_link_libraries(krkrpack PRIVATE krkrbase)
+target_include_directories(krkrpack PRIVATE ${KRKR_INCLUDES}
+	${CMAKE_CURRENT_SOURCE_DIR}/platform)
 
 # ---- tjsc: run a .tjs script -------------------------------------------------
 add_executable(tjsc tools/tjsc.cpp)
