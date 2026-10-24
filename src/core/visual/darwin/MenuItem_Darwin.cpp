@@ -15,6 +15,7 @@
 #include "tjsNative.h"
 #include "tjsVariant.h"
 #include "tjsDictionary.h"
+#include "tjsArray.h"
 
 #include <string>
 #include <vector>
@@ -176,6 +177,7 @@ tTJSNC_MenuItem_Darwin::tTJSNC_MenuItem_Darwin()
 		TJS_DENY_NATIVE_PROP_SETTER
 	}
 	TJS_END_NATIVE_PROP_DECL(caption)
+
 
 	TJS_BEGIN_NATIVE_PROP_DECL(group)
 	{

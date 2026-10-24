@@ -216,6 +216,8 @@ int main(int argc, char** argv)
 	Register(global, TJS_W("MenuItem"), TVPCreateNativeClass_MenuItem());
 	Register(global, TJS_W("Timer"), TVPCreateNativeClass_Timer());
 	Register(global, TJS_W("AsyncTrigger"), TVPCreateNativeClass_AsyncTrigger());
+	extern tTJSNativeClass* TVPCreateNativeClass_VideoOverlay();
+	Register(global, TJS_W("VideoOverlay"), TVPCreateNativeClass_VideoOverlay());
 	extern tTJSNativeClass* TVPCreateNativeClass_WaveSoundBuffer();
 	Register(global, TJS_W("WaveSoundBuffer"), TVPCreateNativeClass_WaveSoundBuffer());
 	// KAG's parser: the class that reads .ks scenarios

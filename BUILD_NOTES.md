@@ -790,6 +790,19 @@ initialize failed: Member "VideoOverlay" does not exist
 **下一个缺口**：`VideoOverlay`（视频叠加层），也在 VCL 层；我们的桩返回空指针。
 同样需要一个最小实现（状态 + 不播视频）。
 
+### 20j. VideoOverlay 写好 → `MenuItem.children` 要正确实现
+
+`visual/darwin/VideoOverlay_Darwin.cpp`：`mode/frame/left/top/width/height/visible/
+loop/audioBalance/audioVolume/enabledAudioStream/numberOfAudioStream/position/totalTime`
++ `open/close/play/stop/pause`，**不播视频**。KAG 的 `Movie extends VideoOverlay` 通过。
+
+**新卡点**：`MenuItem.children`——KAG 的 `internalSetMenuAccessibleAll` 会遍历菜单树
+（`var children = menu.children; ... children.count`），所以这个属性必须返回**数组**。
+
+试过直接 `TJSCreateArrayObject()`，**段错误**——它需要 TJS 的全局上下文/类对象，
+在属性 getter 里裸调不安全。正确做法是用 `iTJSDispatch2* global` 上的 TJS 数组类来
+创建（或者缓存一个数组对象）。下轮按这个方向修。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。

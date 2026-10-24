@@ -326,12 +326,7 @@ iTJSDispatch2* TVPCreateMenuItemObject(iTJSDispatch2* window)
 	return nullptr;
 }
 
-tTJSNativeClass* TVPCreateNativeClass_VideoOverlay()
-{
-	// next: a minimal overlay class (rectangle, visible, nothing playing); KAG
-	// creates one at start-up and stops here
-	return nullptr;
-}
+// TVPCreateNativeClass_VideoOverlay lives in visual/darwin/VideoOverlay_Darwin.cpp
 
 // nothing to detach: no overlay window exists on this back end
 void tTJSNI_VideoOverlay::DetachVideoOverlay()
