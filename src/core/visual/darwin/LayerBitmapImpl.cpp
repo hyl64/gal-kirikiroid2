@@ -19,7 +19,17 @@
 #include "tjsCommHead.h"
 #include "RenderManager.h" // iTVPTexture2D
 #include "LayerBitmapIntf.h"
-#include "Texture2D_Soft.h"
+#include "tjsUtils.h" // tTJSCriticalSection, which the allocator holds
+#include "win32/BitmapBitsAlloc.h"
+#include "tjsError.h"
+#include "MsgIntf.h"
+
+// the window options the engine keeps (bitmap alignment and the like) are
+// initialised on first use; the desktop defaults need nothing set up
+void TVPInitWindowOptions()
+{
+}
+
 
 // ---------------------------------------------------------------------------
 // lifetime and allocation
@@ -61,7 +71,9 @@ void tTVPNativeBaseBitmap::Recreate(tjs_uint w, tjs_uint h, tjs_uint bpp)
 	(void)bpp;
 	if(Bitmap != nullptr)
 		Bitmap->Release();
-	Bitmap = new tTVPTexture2D_Soft((tjs_int)w, (tjs_int)h, false);
+	// the render manager owns every texture; the software one it hands out is
+	// the engine's own (visual/RenderManager.cpp)
+	Bitmap = TVPGetRenderManager()->CreateTexture2D(nullptr, 0, w, h, TVPTextureFormat::RGBA);
 }
 
 void tTVPNativeBaseBitmap::Recreate()
@@ -75,9 +87,9 @@ void tTVPNativeBaseBitmap::SetSize(tjs_uint w, tjs_uint h, bool keepimage)
 {
 	if(Bitmap != nullptr && Bitmap->GetInternalWidth() == w && Bitmap->GetInternalHeight() == h)
 		return;
-	tTVPTexture2D_Soft* old = keepimage ? dynamic_cast<tTVPTexture2D_Soft*>(Bitmap) : nullptr;
-	tTVPTexture2D_Soft* fresh = new tTVPTexture2D_Soft((tjs_int)w, (tjs_int)h, false);
-	if(old != nullptr && Bitmap != nullptr)
+	iTVPTexture2D* old = keepimage ? Bitmap : nullptr;
+	iTVPTexture2D* fresh = TVPGetRenderManager()->CreateTexture2D(nullptr, 0, w, h, TVPTextureFormat::RGBA);
+	if(old != nullptr && fresh != nullptr)
 	{
 		// keep the overlapping corner, as the engine expects of SetSize
 		tjs_uint cw = old->GetInternalWidth() < w ? old->GetInternalWidth() : w;
@@ -85,8 +97,8 @@ void tTVPNativeBaseBitmap::SetSize(tjs_uint w, tjs_uint h, bool keepimage)
 		for(tjs_uint y = 0; y < ch; y++)
 			memcpy(fresh->GetScanLineForWrite(y), old->GetScanLineForRead(y), (size_t)cw * 4);
 	}
-	if(Bitmap != nullptr)
-		Bitmap->Release();
+	if(old != nullptr)
+		old->Release();
 	Bitmap = fresh;
 }
 
@@ -216,3 +228,149 @@ tjs_int tTVPNativeBaseBitmap::GetPitchBytes() const
 void TVPClearGraphicCache(void)
 {
 }
+
+// ---------------------------------------------------------------------------
+// tTVPBitmap : the pixel buffer
+// ---------------------------------------------------------------------------
+//
+// No platform call is in these: they allocate through BitmapInfomation and
+// tTVPBitmapBitsAlloc, which are portable, so the Windows back end's code for
+// this class is the code here too (moved, not rewritten).  The textures and the
+// image loaders hand these buffers around.
+// tTVPBitmap : internal bitmap object
+//---------------------------------------------------------------------------
+/*
+	important:
+	Note that each lines must be started at tjs_uint32 ( 4bytes ) aligned address.
+	This is the default Windows bitmap allocate behavior.
+*/
+tTVPBitmap::tTVPBitmap(tjs_uint width, tjs_uint height, tjs_uint bpp)
+{
+	// tTVPBitmap constructor
+
+	TVPInitWindowOptions(); // ensure window/bitmap usage options are initialized
+
+	RefCount = 1;
+
+	Allocate(width, height, bpp); // allocate initial bitmap
+}
+//---------------------------------------------------------------------------
+tTVPBitmap::tTVPBitmap(tjs_uint width, tjs_uint height, tjs_uint bpp, void* bits)
+{
+	// tTVPBitmap constructor
+	TVPInitWindowOptions(); // ensure window/bitmap usage options are initialized
+
+	RefCount = 1;
+
+	BitmapInfo = new BitmapInfomation( width, height, bpp );
+	Width = width;
+	Height = height;
+	PitchBytes = BitmapInfo->GetPitchBytes();
+	PitchStep = PitchBytes;
+
+	// set bitmap bits
+	try
+	{
+		Bits = bits;
+		if( bpp == 8 ) {
+			Palette = new tjs_uint[DEFAULT_PALETTE_COUNT];
+			ActualPalCount = 0;
+		} else {
+			Palette = NULL;
+			ActualPalCount = 0;
+		}
+	}
+	catch(...)
+	{
+		delete BitmapInfo;
+		BitmapInfo = NULL;
+		throw;
+	}
+}
+//---------------------------------------------------------------------------
+tTVPBitmap::~tTVPBitmap()
+{
+	tTVPBitmapBitsAlloc::Free(Bits);
+	delete BitmapInfo;
+	if( Palette ) delete Palette;
+}
+//---------------------------------------------------------------------------
+tTVPBitmap::tTVPBitmap(const tTVPBitmap & r)
+{
+	// constructor for cloning bitmap
+	TVPInitWindowOptions(); // ensure window/bitmap usage options are initialized
+
+	RefCount = 1;
+
+	// allocate bitmap which has the same metrics to r
+	Allocate(r.GetWidth(), r.GetHeight(), r.GetBPP());
+
+	// copy BitmapInfo
+	*BitmapInfo = *r.BitmapInfo;
+
+	// copy Bits
+	if(r.Bits) memcpy(Bits, r.Bits, r.BitmapInfo->GetImageSize() );
+	if(r.Palette) {
+		memcpy(Palette, r.Palette, sizeof(tjs_uint)*DEFAULT_PALETTE_COUNT );
+		ActualPalCount = r.ActualPalCount;
+	}
+
+	// copy pitch
+	PitchBytes = r.PitchBytes;
+	PitchStep = r.PitchStep;
+}
+//---------------------------------------------------------------------------
+void tTVPBitmap::Allocate(tjs_uint width, tjs_uint height, tjs_uint bpp)
+{
+	// allocate bitmap bits
+	// bpp must be 8 or 32
+
+	// create BITMAPINFO
+	BitmapInfo = new BitmapInfomation( width, height, bpp );
+
+	Width = width;
+	Height = height;
+	PitchBytes = BitmapInfo->GetPitchBytes();
+	PitchStep = PitchBytes;
+
+	// allocate bitmap bits
+	try
+	{
+		Bits = tTVPBitmapBitsAlloc::Alloc(BitmapInfo->GetImageSize(), width, height);
+		if( bpp == 8 ) {
+			Palette = new tjs_uint[DEFAULT_PALETTE_COUNT];
+			ActualPalCount = 0;
+		} else {
+			Palette = NULL;
+			ActualPalCount = 0;
+		}
+	}
+	catch(...)
+	{
+		delete BitmapInfo;
+		BitmapInfo = NULL;
+		throw;
+	}
+}
+//---------------------------------------------------------------------------
+void * tTVPBitmap::GetScanLine(tjs_uint l) const
+{
+	if((tjs_int)l>=BitmapInfo->GetHeight() )
+	{
+		TVPThrowExceptionMessage(TVPScanLineRangeOver, ttstr((tjs_int)l),
+			ttstr((tjs_int)BitmapInfo->GetHeight()-1));
+	}
+
+	return l * PitchBytes + (tjs_uint8*)Bits;
+}
+//---------------------------------------------------------------------------
+void tTVPBitmap::SetPaletteCount( tjs_uint count ) {
+	if( !Is8bit() ) TVPThrowExceptionMessage(TVPInvalidOperationFor32BPP);
+	if( count >= DEFAULT_PALETTE_COUNT )
+		TVPThrowExceptionMessage(TJSRangeError);
+
+	ActualPalCount = count;
+}
+//---------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------

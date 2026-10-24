@@ -423,3 +423,36 @@ void TVPAddCompactEventHook(tTVPCompactEventCallbackIntf* cb)
 {
 	(void)cb;
 }
+
+// ---------------------------------------------------------------------------
+// idle hooks
+// ---------------------------------------------------------------------------
+
+// The engine lets parts of itself ask to be called back while it idles (the
+// compressed software textures refresh themselves that way).  A tool that
+// renders a frame and exits has no idle loop to run them from, so they are
+// recorded and simply never fire; the window layer will run them once there is
+// a loop.
+#include "EventIntf.h"
+
+#include <vector>
+
+static std::vector<tTVPContinuousEventCallbackIntf*> gContinuousHooks;
+
+void TVPAddContinuousEventHook(tTVPContinuousEventCallbackIntf* cb)
+{
+	if(cb != nullptr)
+		gContinuousHooks.push_back(cb);
+}
+
+void TVPRemoveContinuousEventHook(tTVPContinuousEventCallbackIntf* cb)
+{
+	for(size_t i = 0; i < gContinuousHooks.size(); i++)
+	{
+		if(gContinuousHooks[i] == cb)
+		{
+			gContinuousHooks.erase(gContinuousHooks.begin() + (long)i);
+			return;
+		}
+	}
+}

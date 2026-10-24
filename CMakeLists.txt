@@ -58,6 +58,7 @@ pkg_check_modules(ONIG REQUIRED oniguruma)
 pkg_check_modules(SDL2 REQUIRED sdl2)
 pkg_check_modules(PNG REQUIRED libpng)
 pkg_check_modules(FREETYPE REQUIRED freetype2)
+pkg_check_modules(LZ4 REQUIRED liblz4)
 
 # ---- TJS2: the script engine -------------------------------------------------
 # Everything under src/core/tjs2; it needs the message catalogue and a handful
@@ -137,15 +138,30 @@ add_library(krkrvis STATIC
 	${CMAKE_CURRENT_SOURCE_DIR}/platform/darwin/darwin_config.cpp
 	${CORE}/visual/LayerBitmapIntf.cpp
 	${CORE}/visual/darwin/LayerBitmapImpl.cpp
-	${CORE}/visual/darwin/Texture2D_Soft.cpp
-	${CORE}/visual/darwin/RenderManager_Soft.cpp
+	${CORE}/visual/RenderManager.cpp
+	${CORE}/visual/ComplexRect.cpp
+	${CORE}/visual/win32/BitmapInfomation.cpp
+	${CORE}/visual/win32/BitmapBitsAlloc.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/platform/compat/renderer/CCTexture2D.cpp
 	${CORE}/visual/argb.cpp
 	${CORE}/visual/darwin/ResampleImage_Soft.cpp)
 target_include_directories(krkrvis PUBLIC ${KRKR_INCLUDES}
 	${CMAKE_CURRENT_SOURCE_DIR}/platform)
 target_link_libraries(krkrvis PUBLIC krkrbase ${PNG_LIBRARIES})
 target_link_directories(krkrvis PUBLIC ${PNG_LIBRARY_DIRS})
-target_include_directories(krkrvis PUBLIC ${PNG_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
+target_include_directories(krkrvis PUBLIC ${PNG_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} ${LZ4_INCLUDE_DIRS}
+	/opt/homebrew/opt/opencv@4/include/opencv4 /opt/homebrew/include
+	${CMAKE_CURRENT_SOURCE_DIR}/platform/compat)
+target_link_directories(krkrvis PUBLIC ${LZ4_LIBRARY_DIRS})
+# Homebrew carries OpenCV 5 and OpenCV 4 side by side and both install
+# libopencv_*.dylib; the render manager is written against the 4.x API
+# (getAffineTransform, getPerspectiveTransform with three arguments), so the
+# 4.x libraries are named by path rather than searched for.
+set(OPENCV4_LIB /opt/homebrew/opt/opencv@4/lib)
+target_link_libraries(krkrvis PUBLIC ${LZ4_LIBRARIES} swscale
+	${OPENCV4_LIB}/libopencv_core.dylib
+	${OPENCV4_LIB}/libopencv_imgproc.dylib)
+target_link_directories(krkrvis PUBLIC /opt/homebrew/lib ${OPENCV4_LIB})
 target_link_libraries(krkrvis PUBLIC ${FREETYPE_LIBRARIES})
 target_link_directories(krkrvis PUBLIC ${FREETYPE_LIBRARY_DIRS})
 

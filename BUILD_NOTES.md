@@ -233,7 +233,43 @@ point (10,10) = 0x00ff00ff, (11,10) = 0xff282828
 wrote /tmp/bmp.bmp     ← 渐变 + 色块，像素抽样与写入一致
 ```
 
-### 关键发现：连「纯色填充」都要走渲染方法
+### 10. 引擎自带的软件渲染器跑起来了 ✅（重大转折）
+上一轮我发现「连 Fill 都要走渲染方法」，正准备自己写。结果发现：**上游
+`visual/RenderManager.cpp`（4414 行）里本来就有一整套软件渲染器**——
+`tTVPSoftwareRenderManager` + 全部渲染方法（FillARGB / FillColor / Copy /
+AlphaBlend / 各色混合与遮罩 / 拉伸 / 透视）+ 自己的压缩纹理类
+（`tTVPSoftwareTexture2D`，带 LZ4）。
+
+它只被三样东西卡住，全是**编译期依赖**而非逻辑：
+
+| 缺的东西 | 解法 |
+|---|---|
+| `renderer/CCTexture2D.h`（cocos2d） | `platform/compat/renderer/CCTexture2D.h`：只声明该文件用到的 4 个名字，适配器函数是空实现（软件后端永不调用） |
+| `xxhash/xxhash.h` | `platform/compat/xxhash/xxhash.h`：自己实现的 XXH32（公有领域算法） |
+| `libswscale` / `opencv2` / `lz4` | `brew install ffmpeg` / `opencv@4` / `lz4`。**注意必须用 OpenCV 4**：代码用的是 `cv::getAffineTransform` 和 3 参数 `getPerspectiveTransform`，OpenCV 5 已删除/改签名；Homebrew 同时装了 v5 和 v4，所以用**绝对路径**链接 v4 |
+
+于是把我自己写的 `Texture2D_Soft.cpp` / `RenderManager_Soft.cpp` **删掉了**——
+用引擎的。顺带把 `tTVPBitmap`（像素缓冲类，137 行纯可移植）从 win32 版搬进
+`visual/darwin/LayerBitmapImpl.cpp`。
+
+**验证**（`krkrbitmap`，全部走引擎 API）：
+```
+$ ./build/krkrbitmap /tmp/bmp4.bmp
+01:57:48 (info) Use malloc for Bitmap
+bitmap: 320x200, 32 bpp, pitch 1280
+bg    (32, 64, 96)      ← Fill(0xff204060) 精确正确
+block (255, 128, 0)     ← FillColor(0x00ff8000, opa=255) 精确正确
+point (0, 255, 0)       ← SetPoint(0xff00ff00) 正确
+```
+
+**已知缺口**：`FillColor` 在 `opa < 255` 时走 `ConstColorAlphaBlend` 方法，目前不出图
+（不崩），待查。`Fill` 与不透明 `FillColor` 正常。
+
+颜色约定（两条要记住）：
+- `Fill` / `FillColor` 的入参是 **0xAARRGGBB**，内部会 `TVP_REVRGB` 成 0xAABBGGRR
+- `GetPoint` / `SetPoint` / 扫描线用的是**内部格式 0xAABBGGRR**
+
+### 上一轮的发现（保留记录）：连「纯色填充」都要走渲染方法
 `iTVPBaseBitmap::Fill` 的实现是：
 ```cpp
 static iTVPRenderMethod* method = TVPGetRenderManager()->GetRenderMethod("FillARGB");

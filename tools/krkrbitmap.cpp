@@ -41,26 +41,15 @@ int main(int argc, char** argv)
 	printf("bitmap: %ux%u, %u bpp, pitch %d\n", (unsigned)bmp.GetWidth(),
 		(unsigned)bmp.GetHeight(), (unsigned)bmp.GetBPP(), (int)bmp.GetPitchBytes());
 
-	// A gradient written through the scan lines.  The engine's own Fill and
-	// FillColor go through a render method ("FillARGB"), which a software back
-	// end has to provide before they can be used - that is the next component,
-	// and until it lands the scan lines are the honest way in.
-	for(tjs_uint y = 0; y < h; y++)
-	{
-		unsigned g = 0x20 + (unsigned)(y * 0xa0 / h);
-		unsigned colour = 0xff000000u | (g << 16) | (g << 8) | g;
-		unsigned* line = (unsigned*)bmp.GetScanLineForWrite(y);
-		for(tjs_uint x = 0; x < w; x++)
-			line[x] = colour;
-	}
+	// Fill and FillColor go through the engine's render methods ("FillARGB" and
+	// "FillColor"), which the software render manager implements on top of the
+	// C blitters.  Fill's colour is 0xAARRGGBB - it reverses it for the internal
+	// 0xAABBGGRR the textures hold.
+	bmp.Fill(tTVPRect(0, 0, (tjs_int)w - 1, (tjs_int)h - 1), 0xff204060u);
+	bmp.FillColor(tTVPRect(40, 40, 280, 120), 0x00ff8000u, 255);
 
-	// a block written over it, to show the buffer is addressable per pixel
-	for(tjs_uint y = 40; y < 120; y++)
-	{
-		unsigned* line = (unsigned*)bmp.GetScanLineForWrite(y);
-		for(tjs_uint x = 40; x < 280; x++)
-			line[x] = 0xff0080ffu;
-	}
+	// and a point, which must agree with the scan lines
+	bmp.SetPoint(5, 5, 0xff00ff00u);
 
 	// the point accessors must agree with the scan lines
 	bmp.SetPoint(10, 10, 0x00ff00ffu);
