@@ -454,6 +454,21 @@ tjs_uint8 *dest = (tjs_uint8*)_tar->GetScanLineForWrite(rect.top) + rect.left * 
 - 已修两处相关问题（都保留）：位图请求**未压缩**纹理（`RENDER_CREATE_TEXTURE_FLAG_NO_COMPRESS`）；
   `SetSize` 也把 0 尺寸钳到 1（之前只钳了 `Recreate`）
 
+**本轮又推进两层**（都验证过）：
+
+1. **`tTVPBitmap` 分配是好的**：直接构造 `tTVPBitmap(32,32,32)` → `pitch 128, bits 非空, 扫描线可用`
+   → 排除「像素缓冲分配失败」这个可能。
+2. **位图现在自己持有像素缓冲**：因为 `tTVPSoftwareTexture2D` 虽然会自分配，但
+   `CreateTexture2D(pixel,…)` 在有指针时创建的是**静态视图**；位图契约是「拥有自己的像素」，
+   所以 `CreateOwnedTexture()` 自己 `calloc`、以静态视图包装、并在替换/析构时释放。
+
+**仍未解，但候选已缩到两个**：
+- `tTVPSoftwareTexture2D_static::Update()` 会**重新赋值 BmpData**——若某处以 `nullptr` 调 Update，
+  之后写入必崩
+- `CreateTexture2D(neww, newh, tex)` 构造的 `tTVPSoftwareTexture2D(tex,…)` 以一个
+  `tTVPSoftwareTexture2D_static(nullptr, 0, w, h, format)` 起手，若其后的分配没接上，
+  BmpData 留空
+
 **下一步该查**：`tTVPSoftwareTexture2D::GetScanLineForWrite` 的实现——什么情况下返回空？
 （压缩变体 `tTVPSoftwareTexture2D_compress` 的写法需要先解压，若它被创建出来就会走那条路径；
 另一个方向是 `rect.top` 超出了纹理高度，即某处的尺寸约定不一致。）

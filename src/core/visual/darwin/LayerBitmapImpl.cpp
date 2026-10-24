@@ -37,6 +37,52 @@ extern void TVPMapPrerenderedFont(const tTVPFont& font, const ttstr& storage);
 extern void TVPUnmapPrerenderedFont();
 
 
+
+// ---------------------------------------------------------------------------
+// owned pixel buffers
+// ---------------------------------------------------------------------------
+//
+// The render manager's CreateTexture2D(pixel, pitch, w, h, ...) does not
+// allocate: it wraps the buffer it is handed.  A bitmap owns its pixels, so the
+// buffer is allocated here and remembered against the texture that views it,
+// until the bitmap takes another texture or is destroyed.
+
+#include <map>
+
+static std::map<iTVPTexture2D*, uint8_t*> gOwnedPixels;
+
+static iTVPTexture2D* CreateOwnedTexture(tjs_uint w, tjs_uint h)
+{
+	if(w == 0) w = 1;
+	if(h == 0) h = 1;
+	const size_t bytes = (size_t)w * h * 4;
+	uint8_t* pixels = (uint8_t*)calloc(1, bytes);
+	if(pixels == nullptr)
+		return nullptr;
+	iTVPTexture2D* tex = TVPGetRenderManager()->CreateTexture2D(pixels, (int)(w * 4), w, h,
+		TVPTextureFormat::RGBA, RENDER_CREATE_TEXTURE_FLAG_NO_COMPRESS);
+	if(tex == nullptr)
+	{
+		free(pixels);
+		return nullptr;
+	}
+	gOwnedPixels[tex] = pixels;
+	return tex;
+}
+
+static void ReleaseTexture(iTVPTexture2D* tex)
+{
+	if(tex == nullptr)
+		return;
+	auto it = gOwnedPixels.find(tex);
+	if(it != gOwnedPixels.end())
+	{
+		free(it->second);
+		gOwnedPixels.erase(it);
+	}
+	tex->Release();
+}
+
 // ---------------------------------------------------------------------------
 // lifetime and allocation
 // ---------------------------------------------------------------------------
@@ -66,7 +112,7 @@ tTVPNativeBaseBitmap::tTVPNativeBaseBitmap(const tTVPNativeBaseBitmap& r)
 tTVPNativeBaseBitmap::~tTVPNativeBaseBitmap()
 {
 	if(Bitmap != nullptr)
-		Bitmap->Release();
+		ReleaseTexture(Bitmap);
 	Bitmap = nullptr;
 }
 
@@ -83,8 +129,7 @@ void tTVPNativeBaseBitmap::Recreate(tjs_uint w, tjs_uint h, tjs_uint bpp)
 		Bitmap->Release();
 	// the render manager owns every texture; the software one it hands out is
 	// the engine's own (visual/RenderManager.cpp)
-	Bitmap = TVPGetRenderManager()->CreateTexture2D(nullptr, 0, w, h, TVPTextureFormat::RGBA,
-		RENDER_CREATE_TEXTURE_FLAG_NO_COMPRESS);
+	Bitmap = CreateOwnedTexture(w, h);
 }
 
 void tTVPNativeBaseBitmap::Recreate()
@@ -103,8 +148,7 @@ void tTVPNativeBaseBitmap::SetSize(tjs_uint w, tjs_uint h, bool keepimage)
 	if(Bitmap != nullptr && Bitmap->GetInternalWidth() == w && Bitmap->GetInternalHeight() == h)
 		return;
 	iTVPTexture2D* old = keepimage ? Bitmap : nullptr;
-	iTVPTexture2D* fresh = TVPGetRenderManager()->CreateTexture2D(nullptr, 0, w, h, TVPTextureFormat::RGBA,
-		RENDER_CREATE_TEXTURE_FLAG_NO_COMPRESS);
+	iTVPTexture2D* fresh = CreateOwnedTexture(w, h);
 	if(old != nullptr && fresh != nullptr)
 	{
 		// keep the overlapping corner, as the engine expects of SetSize
@@ -114,7 +158,7 @@ void tTVPNativeBaseBitmap::SetSize(tjs_uint w, tjs_uint h, bool keepimage)
 			memcpy(fresh->GetScanLineForWrite(y), old->GetScanLineForRead(y), (size_t)cw * 4);
 	}
 	if(old != nullptr)
-		old->Release();
+		ReleaseTexture(old);
 	Bitmap = fresh;
 }
 
