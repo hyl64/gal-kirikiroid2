@@ -731,6 +731,16 @@ void TVPExecuteBytecode( const tjs_uint8* content, size_t len, iTJSDispatch2 *co
 
 
 //---------------------------------------------------------------------------
+// The constants and classes the engine defines in TJS - gcsAuto, the virtual key
+// codes, the image tag table and the rest - live in a script that start-up runs
+// once.  A host that builds its own engine has to run it too, so expose it.
+void TVPRunEngineInitScript(tTJS* engine)
+{
+	if(engine == nullptr)
+		return;
+	engine->ExecScript(ttstr(TVPInitTJSScript));
+}
+
 void TVPExecuteStorage(const ttstr &name, tTJSVariant *result, bool isexpression,
 	const tjs_char * modestr)
 {

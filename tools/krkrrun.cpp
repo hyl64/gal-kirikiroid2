@@ -192,6 +192,9 @@ int main(int argc, char** argv)
 	extern tTJS* TVPScriptEngine;
 	tTJS* tjs = new tTJS();
 	TVPScriptEngine = tjs;
+	// the engine's own TJS-level definitions (gcsAuto and the rest); KAG needs them
+	extern void TVPRunEngineInitScript(tTJS*);
+	TVPRunEngineInitScript(tjs);
 	tjs->SetConsoleOutput(&console);
 	iTJSDispatch2* global = tjs->GetGlobal();
 

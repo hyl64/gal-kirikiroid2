@@ -650,6 +650,34 @@ initialize failed: Member "gcsAuto" does not exist      ← 新的具体错误
 正在按它的假设调用引擎/框架的成员。`gcsAuto` 来自 `Config.tjs` 的默认值，值得下一轮查
 （可能是 Config.tjs 被跳过，或该成员由 KAG 在更晚的步骤定义）。
 
+### 20d. KAG 加载了自己的全部模块 ✅（本轮最大进展）
+
+`gcsAuto` 缺失的原因找到了：引擎有一大段**用 TJS 写成的初始化脚本**
+（`ScriptMgnIntf.cpp` 里的 `TVPInitTJSScript`，定义了 `gcsAuto`、虚拟键码、图像标签表等），
+只有 `TVPInitScriptEngine()` 会执行它，而工具是自建引擎。加了一个导出函数：
+
+```cpp
+void TVPRunEngineInitScript(tTJS* engine) { engine->ExecScript(ttstr(TVPInitTJSScript)); }
+```
+
+**结果——真实 KAG3 开始加载它自己的全部模块**：
+
+```
+MessageLayer.tjs を読み込みました(4ms)
+Menus.tjs を読み込みました(1ms)
+DefaultMover.tjs を読み込みました(0ms)
+MainWindow.tjs を読み込みました(7ms)
+スクリプトの読み込みに 23ms かかりました
+initialize failed: Member "MenuItem" does not exist
+```
+
+**这意味着**：KAG 的消息层、菜单、动画移动器、主窗口——四个核心模块在我们的移植版上
+被解析并执行成功。KiriKiri 的 TJS2 解释器在这个后端上能跑真实的复杂框架代码。
+
+**新卡点**：`MenuItem` 原生类不存在——因为它的实现（`tTJSNC_MenuItem`）在 Windows 的
+VCL 应用层里，我们当时用空工厂顶替。这是**具体可做的一件事**：给桌面后端写一个最小的
+MenuItem 类（菜单栏在 galgame 里用得不多，KAG 只是要在启动时创建它）。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
