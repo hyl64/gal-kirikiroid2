@@ -1923,6 +1923,35 @@ TJS_BEGIN_NATIVE_PROP_DECL(layerTreeOwnerInterface)
 }
 TJS_END_NATIVE_PROP_DECL(layerTreeOwnerInterface)
 //----------------------------------------------------------------------
+// menu: the root of the window's menu bar.  A desktop back end has no menu bar,
+// but KAG builds one at start-up (menu.add(...)), so the script is given an item
+// tree to build and nothing draws it.
+	TJS_BEGIN_NATIVE_PROP_DECL(/*{*/ menu)
+	{
+		TJS_BEGIN_NATIVE_PROP_GETTER
+		{
+			TJS_GET_NATIVE_INSTANCE(/*var. name*/_this, /*var. type*/tTJSNI_Window);
+			extern tTJSNativeClass* TVPCreateNativeClass_MenuItem();
+			tTJSNativeClass* cls = TVPCreateNativeClass_MenuItem();
+			iTJSDispatch2* obj = nullptr;
+			if(cls != nullptr)
+			{
+				cls->CreateNew(0, nullptr, nullptr, &obj, 0, nullptr, cls);
+				cls->Release();
+			}
+			if(obj != nullptr)
+			{
+				*result = tTJSVariant(obj, obj);
+				obj->Release();
+			}
+			return TJS_S_OK;
+		}
+		TJS_END_NATIVE_PROP_GETTER
+
+		TJS_DENY_NATIVE_PROP_SETTER
+	}
+	TJS_END_NATIVE_PROP_DECL(/*{*/ menu)
+//----------------------------------------------------------------------
 
 	TJS_END_NATIVE_MEMBERS
 

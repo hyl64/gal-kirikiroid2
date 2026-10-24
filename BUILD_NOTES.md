@@ -744,6 +744,17 @@ initialize failed: Member "menu" does not exist
 **下一步**：给 `tTJSNC_Window` 加一个 `menu` 属性，返回一棵可 `add` 的 MenuItem 树
 （不画出来，只让框架能构建）。位置在 `visual/WindowIntf.cpp` 的成员表里。
 
+### 20g. `menu` 属性补上 ✅ → 下一个缺 `Timer`
+
+给 `tTJSNC_Window` 加了 `menu` 属性（`WindowIntf.cpp` 成员表末尾），返回一棵可
+`add` 的 MenuItem 树，不画任何东西。KAG 的 `Menus.tjs` 通过。
+
+**新卡点**：`Member "Timer" does not exist`——`Timer` 原生类也在 VCL 应用层
+（`environ/win32/TimerImpl.cpp` 之类），桌面后端还没有。KAG 用它做自动播放/动画计时。
+
+**这类缺口的规律很清楚**：VCL 应用层提供的脚本可见类（`MenuItem`、`Timer`、
+可能还有 `Window` 的子类行为），桌面上要逐个补最小实现。每补一个 KAG 就往下走一段。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
