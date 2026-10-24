@@ -566,8 +566,23 @@ wrote /tmp/mk3.bmp (640x480, presented frame)
 | update 次数 | 1 | 3 |
 | 子层内容 | 只有文字 | 框 + 三次文字 |
 
-**下一步**：分别只改一个变量（先试 640×480 单次 update），二分出是尺寸还是多次
-update 导致 `DrawBuffer` 的合成失效。
+**二分结果（本轮完成）**：用 640×480 + **单次** update 跑最小脚本（`/tmp/big.tjs`）：
+
+```
+wrote /tmp/big.bmp (640x480, presented frame)
+colours: 1                  ← 仍然只有底色
+```
+
+对照 320×240 同样的脚本 → 成功。**所以与 update 次数无关，是尺寸相关**：
+
+| 尺寸 | 子层合成 |
+|---|---|
+| 320×240 | ✅ |
+| 640×480 | ❌ |
+
+**下一步**：查与尺寸相关的路径——`tTVPLayerManager::GetDrawBuffer` 的创建尺寸
+（`GetPrimaryLayerSize`）与 `DrawCompleted` 里 `DrawBuffer->Blt(...)` 的 destrect；
+320 能过、640 过不去，像是某处假设了「窗口尺寸 = 图层尺寸」或某个上限。
 
 ### 18d. 更新链路接上了，合成仍不落（历史）
 
