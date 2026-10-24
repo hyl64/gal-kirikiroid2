@@ -455,10 +455,8 @@ tTJSNativeClass* TVPCreateNativeClass_BitmapLayerTreeOwner()
 }
 
 
-tTJSNativeClass* TVPCreateNativeClass_MenuItem()
-{
-	return nullptr;
-}
+// TVPCreateNativeClass_MenuItem lives in visual/darwin/MenuItem_Darwin.cpp: the
+// class is more than a stub because a framework derives from it at start-up
 
 // ---------------------------------------------------------------------------
 // the application's globals

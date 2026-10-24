@@ -16,6 +16,7 @@
 #include "tjsVariant.h"
 
 #include "WindowIntf.h"
+#include "MenuItemIntf.h"
 #include "LayerIntf.h"
 #include "BitmapIntf.h"
 #include "LayerBitmapIntf.h"
@@ -210,6 +211,7 @@ int main(int argc, char** argv)
 	Register(global, TJS_W("Font"), TVPCreateNativeClass_Font());
 	Register(global, TJS_W("Debug"), TVPCreateNativeClass_Debug());
 	Register(global, TJS_W("Plugins"), TVPCreateNativeClass_Plugins());
+	Register(global, TJS_W("MenuItem"), TVPCreateNativeClass_MenuItem());
 
 	int status = 0;
 	try

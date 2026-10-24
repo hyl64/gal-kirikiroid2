@@ -104,7 +104,7 @@ add_library(krkr STATIC
 	# ---- what the desktop supplies
 	${PLATFORM}/darwin_host.cpp ${PLATFORM}/darwin/Platform.cpp ${PLATFORM}/darwin/darwin_font.cpp
 	${PLATFORM}/darwin/darwin_config.cpp ${PLATFORM}/darwin/darwin_visual_services.cpp
-	${CORE}/visual/darwin/LayerBitmapImpl.cpp ${CORE}/visual/darwin/TextDraw_Darwin.cpp
+	${CORE}/visual/darwin/LayerBitmapImpl.cpp ${CORE}/visual/darwin/TextDraw_Darwin.cpp ${CORE}/visual/darwin/MenuItem_Darwin.cpp
 	${CORE}/visual/darwin/FontRasterizers_Darwin.cpp ${CORE}/visual/darwin/ResampleImage_Soft.cpp
 	${CORE}/visual/darwin/DrawDevice_Darwin.cpp ${CORE}/visual/darwin/DrawDeviceClass_Darwin.cpp
 	${PLATFORM}/compat/renderer/CCTexture2D.cpp
