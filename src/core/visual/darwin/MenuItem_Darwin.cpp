@@ -101,15 +101,15 @@ tjs_uint32 tTJSNC_MenuItem_Darwin::ClassID = (tjs_uint32)-1;
 tTJSNC_MenuItem_Darwin::tTJSNC_MenuItem_Darwin()
 	: inherited(TJS_W("MenuItem"))
 {
-	TJS_BEGIN_NATIVE_MEMBERS(MenuItemDarwin)
+	TJS_BEGIN_NATIVE_MEMBERS(MenuItem)
 	TJS_DECL_EMPTY_FINALIZE_METHOD
 
 	TJS_BEGIN_NATIVE_CONSTRUCTOR_DECL(/*var.name*/ _this,
-		/*var.type*/ MenuItemInstance, /*TJS class name*/ MenuItemDarwin)
+		/*var.type*/ MenuItemInstance, /*TJS class name*/ MenuItem)
 	{
 		return TJS_S_OK;
 	}
-	TJS_END_NATIVE_CONSTRUCTOR_DECL(/*TJS class name*/ MenuItemDarwin)
+	TJS_END_NATIVE_CONSTRUCTOR_DECL(/*TJS class name*/ MenuItem)
 
 	// a child goes on the end; a framework builds its menu bar this way
 	TJS_BEGIN_NATIVE_METHOD_DECL(/*func. name*/ add)

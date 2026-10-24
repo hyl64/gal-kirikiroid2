@@ -715,6 +715,35 @@ new T2();       → 静默失败
 **下一步**：查 `tTJSNativeClass` 的成员表里「以类名为名的构造入口」是怎么建立的
 （`TJS_BEGIN_NATIVE_CONSTRUCTOR_DECL` 注册的成员名 vs. `super.` 的查找规则）。
 
+### 20f. `super.原生类名(...)` 修好 ✅（TJS2 原生类继承的关键）
+
+**根因**：`TJS_BEGIN_NATIVE_MEMBERS(名字)` 里那个名字**才是**这个类在 TJS 里的内部名，
+`super.类名(...)` 就是按它查的。我在 MenuItem 里写成了 `MenuItemDarwin`，而全局注册名
+是 `MenuItem` → 两者不一致 → `super.MenuItem` 找不到。
+
+改成一致（`TJS_BEGIN_NATIVE_MEMBERS(MenuItem)` + 构造声明同名）后：
+
+```
+class T2 extends MenuItem { function T2() { super.MenuItem(null, "x"); } }
+new T2();        → super ok ✓
+```
+
+**这是一处通用的修复**：任何「脚本继承原生类并在构造里调父类构造」的写法从此都能用，
+KAG 的 `KAGMenuItem extends MenuItem` 正是这种写法。
+
+**KAG 现在通过 MenuItem，卡在下一个成员**：
+
+```
+initialize failed: Member "menu" does not exist
+```
+
+`menu` 是 **Window 的属性**（菜单栏根节点），KAG 的 `Menus.tjs` 一上来就
+`menu.add(this.systemMenu = new KAGMenuItem(...))`。桌面后端没有菜单栏，所以这个属性
+不存在。
+
+**下一步**：给 `tTJSNC_Window` 加一个 `menu` 属性，返回一棵可 `add` 的 MenuItem 树
+（不画出来，只让框架能构建）。位置在 `visual/WindowIntf.cpp` 的成员表里。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
