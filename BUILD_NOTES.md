@@ -383,6 +383,30 @@ wrote /tmp/text2.bmp
 `DrawTextMultiple`）；字体栅格化器需要**懒初始化**（Windows 版在应用启动时初始化，
 工具里没人做，`GetCurrentRasterizer()` 里补了）。
 
+### 16. 图层系统的接线勘察（本轮结论：可以切到「真实现」了）
+把 `LayerIntf.cpp`（图层系统本体）、`ScriptMgnIntf.cpp`（注册全部 TVP 类）、
+`WindowIntf.cpp`、`Application.cpp`、`EventIntf.cpp`、`LayerManager.cpp`、
+`TransIntf`/`RectItf`/`GraphicsLoaderIntf`/`BitmapIntf`、`BasicDrawDevice`、
+`GraphicsLoaderImpl`、`NativeEventQueue`、`SysInitImpl` 等**全部加进构建后**：
+
+1. **它们都能编译**
+2. 缺口逐项补齐后，链接阶段开始报 **25 个 duplicate symbol** ——
+   这 25 个正是我之前为「让代码先编过」写的平台桩，而现在**引擎的真实实现已经进来了**：
+   `EventIntf.cpp` 的真实事件队列、`Application.cpp` 的真实应用层、
+   `GraphicsLoaderIntf.cpp` 的图形缓存、`WindowIntf.cpp` 的真实 Window 类……
+
+**这意味着移植进入新阶段**：不再需要「桩出一个能链接的世界」，而是把真实应用层接上、
+删掉自己的桩。这是引擎② 的**最后一步**，内容明确：
+
+| 要做的 | 说明 |
+|---|---|
+| 删掉约 25 个平台桩 | 它们和真实现冲突（`darwin_visual_services.cpp` 里的绝大部分） |
+| 保留真正平台的部分 | SDL 窗口创建/送显（`DrawDevice_Darwin`）、文件媒体、字体钩子、剪贴板 |
+| 补 `tTVPNativeBaseBitmap::ApplyFont` 之外的窗口类 | 脚本侧 `Window` 需要平台窗口对象（50 纯虚的 `tTVPWindow`） |
+
+本轮为保证仓库绿色，构建配置回退到已验证状态（10 个工具全绿），清理工作留给下一轮
+一次做完——那是一次性的删除+接线，比继续加桩更有价值。
+
 ## 窗口层的真实工作量（下一步，已勘察清楚）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：

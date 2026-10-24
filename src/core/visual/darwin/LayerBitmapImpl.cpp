@@ -30,6 +30,7 @@
 extern FontRasterizer* GetCurrentRasterizer();
 extern tjs_int TVPGlobalFontStateMagic; // bumped when the rasterizer changes
 extern tTVPPrerenderedFont* TVPGetPrerenderedMappedFont(const tTVPFont& font);
+extern void TVPUnmapPrerenderedFont(const tTVPFont& font);
 extern void TVPGetAllFontList(std::vector<ttstr>& list);
 extern void TVPMapPrerenderedFont(const tTVPFont& font, const ttstr& storage);
 extern void TVPUnmapPrerenderedFont();
@@ -534,5 +535,29 @@ void tTVPNativeBaseBitmap::ApplyFont()
 void tTVPNativeBaseBitmap::SetFont(const tTVPFont &font)
 {
 	Font = font;
+	FontChanged = true;
+}
+
+// the bitmap-level mapping of a game's prerendered font
+void tTVPNativeBaseBitmap::MapPrerenderedFont(const ttstr & storage)
+{
+	ApplyFont();
+	TVPMapPrerenderedFont(Font, storage);
+	FontChanged = true;
+}
+
+void tTVPNativeBaseBitmap::UnmapPrerenderedFont()
+{
+	ApplyFont();
+	TVPUnmapPrerenderedFont(Font);
+	FontChanged = true;
+}
+
+void tTVPNativeBaseBitmap::SetSizeAndImageBuffer(tTVPBitmap* bmp)
+{
+	// create a new bitmap and copy existing bitmap
+	iTVPTexture2D *newbitmap = GetRenderManager()->CreateTexture2D(bmp);
+	Bitmap->Release();
+	Bitmap = newbitmap;
 	FontChanged = true;
 }

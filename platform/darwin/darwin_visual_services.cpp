@@ -32,9 +32,11 @@
 #include "ClipboardIntf.h"
 #include "MenuItemIntf.h"
 #include "WindowIntf.h"
+#include "VideoOvlIntf.h"
 #include "SysInitIntf.h"
 
 #include <set>
+#include <cstdlib>
 
 // ---------------------------------------------------------------------------
 // the formats this back end does not decode
@@ -389,6 +391,19 @@ tTJSNativeClass* TVPCreateNativeClass_VideoOverlay()
 	return nullptr;
 }
 
+// nothing to detach: no overlay window exists on this back end
+void tTJSNI_VideoOverlay::DetachVideoOverlay()
+{
+}
+
+void tTJSNI_VideoOverlay::ResetOverlayParams()
+{
+}
+
+void tTJSNI_VideoOverlay::SetRectangleToVideoOverlay()
+{
+}
+
 tTJSNativeClass* TVPCreateNativeClass_ImageFunction()
 {
 	return nullptr;
@@ -677,4 +692,52 @@ void TVPConvertPCMToFloat(float* dest, const void* src, const tTVPWaveFormat& fo
 	if(dest != nullptr)
 		for(int i = 0; i < count; i++)
 			dest[i] = 0.0f;
+}
+
+// ---------------------------------------------------------------------------
+// the allocation wrappers and the one avutil helper the application names
+// ---------------------------------------------------------------------------
+//
+// The Android build links with --wrap=malloc so that it can account for the
+// engine's allocations; the application layer calls the wrapped names directly.
+// Here they are the system calls, which is what the wrapper would forward to.
+extern "C" void* __real_malloc(size_t size);
+extern "C" void __real_free(void* p);
+extern "C" void* __real_realloc(void* p, size_t size);
+
+extern "C" void* __real_malloc(size_t size)
+{
+	return malloc(size);
+}
+
+extern "C" void __real_free(void* p)
+{
+	free(p);
+}
+
+extern "C" void* __real_realloc(void* p, size_t size)
+{
+	return realloc(p, size);
+}
+
+// ffmpeg's path helper, used where the engine splits a file name: the last
+// separator and what precedes it
+extern "C" char* av_dirname(char* path)
+{
+	if(path == nullptr)
+		return nullptr;
+	char* last = nullptr;
+	for(char* p = path; *p; p++)
+		if(*p == '/' || *p == '\\')
+			last = p;
+	if(last == nullptr)
+		return path;
+	*last = '\0';
+	return path;
+}
+
+// the application's main window closed: a host without windows has nothing to
+// release, and the engine's own shutdown path runs anyway
+void TVPMainWindowClosed()
+{
 }
