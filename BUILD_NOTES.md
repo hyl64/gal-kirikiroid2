@@ -312,6 +312,36 @@ presented 60 frame(s) on 'cocoa'      ← 真的开了一个 Cocoa 窗口
 全绿，把 `LayerIntf.cpp` 与对应工具撤下（不留死代码/坏目标），九个工具全部回归通过
 （`krkrpresent` 仍逐像素 0 差异）。
 
+### 13. 图层系统的平台服务（部分完成，边界已量化）
+把这轮为图层写的东西落了两个文件：
+
+| 文件 | 内容 |
+|---|---|
+| `visual/darwin/FontRasterizers_Darwin.cpp` | 字体栅格化注册表（从 win32 版搬来，纯可移植）：`TVPSetFontRasterizer`/`TVPGetFontRasterizer`/`GetCurrentRasterizer`/预渲染字体映射 |
+| `platform/darwin/darwin_visual_services.cpp` | 引擎会点名的一批平台服务：不支持的图像格式（JPEG/JXR/WebP/BPG/PVR，**明确抛「无解码器」而不是假装**）、`ColorToRGB`、`TVPGetCursor`、剪贴板（走 SDL）、`TVPGetAppPath`、事件钩子、`TVPGL_ASM_Init`、`ExtractFileDir`、`TVPListDir` 等 |
+
+**把 `LayerIntf.cpp`（图层系统本体）+ `ScriptMgnIntf.cpp`（注册全部 TVP 类）加进库后，
+暴露出的完整缺口清单**（这就是引擎②还剩的全部工作量，逐项都已知归属）：
+
+```
+事件/系统层   TVPInvokeEvents, TVPEventReceived, TVPGetSystemEventDisabledState,
+              TVPSystemControl(+Alive), TVPRegisteredPlugins, TVPLoadInternalPlugins,
+              TVPCauseAtInstallExtensionClass, TVPCreateAndAddWindow
+插件/手柄     TVPLoadInternalPlugin, TVPGetJoyPadAsyncState
+脚本层        TVPExecuteExpression, TVPShowScriptException, TVPProcessUnhandledException,
+              TVPBeforeProcessUnhandledException
+系统信息      TVPDataPath, TVPNativeProjectDir, TVPDetectCPU, TVPDetectCPU,
+              TVPJPEGLoadPrecision, TVPGL_ASM_Init
+其它          TVPListDir, ExtractFileDir, TVPShowPopMenu, TVPGetWindowListAt
+```
+
+**结论**：引擎②最后一段不是「一个大部件」，而是**约 20 个 Windows 系统层符号**的接线，
+每个都很小（多数是「无窗口/无插件/无手柄时返回什么」的决定）。这一轮写了其中一半，
+剩下的一半需要逐个决定语义，而不是靠猜。
+
+为保证构建全绿，`LayerIntf.cpp` 等仍**没有**加入构建（不留坏目标）；9 个工具全部
+回归通过（`krkrpresent` 逐像素 0 差异）。
+
 ## 窗口层的真实工作量（下一步，已勘察清楚）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：

@@ -147,7 +147,9 @@ add_library(krkrvis STATIC
 	${CORE}/visual/darwin/ResampleImage_Soft.cpp
 	${CORE}/visual/win32/DrawDevice.cpp
 	${CORE}/visual/win32/LayerImpl.cpp
-	${CORE}/visual/darwin/DrawDevice_Darwin.cpp)
+	${CORE}/visual/darwin/DrawDevice_Darwin.cpp
+	${CORE}/visual/darwin/FontRasterizers_Darwin.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/platform/darwin/darwin_visual_services.cpp)
 target_include_directories(krkrvis PUBLIC ${KRKR_INCLUDES}
 	${CMAKE_CURRENT_SOURCE_DIR}/platform)
 target_link_libraries(krkrvis PUBLIC krkrbase ${PNG_LIBRARIES} ${SDL2_LIBRARIES})
