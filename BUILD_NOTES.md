@@ -480,6 +480,11 @@ win.update();                            // 合成
 ```
 输出：`wrote /tmp/child.bmp (320x240)`，exit=0。
 
+**但子图层的内容还没合成进画面**：`new Layer(win, base)`、`fillRect`、`drawText`、
+`visible=true`、`update()` 全部返回成功、截图也写出来了，**但合成帧里只有主图层的
+底色**（子图层的文字没出现）。这是下一个具体问题：图层树的合成路径
+（`tTVPLayerManager::Update`/`tTVPDrawable` 的子层遍历）。
+
 **这轮的教训比 bug 值钱**：诊断输出必须 `fflush`（stderr 接管道时全缓冲，`_exit` 会丢光）；
 以及**先怀疑自己的测试脚本**，再怀疑引擎。
 
