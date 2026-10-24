@@ -446,6 +446,8 @@ tTJSNativeClass* TVPCreateNativeClass_MIDISoundBuffer()
 
 tTJSNativeClass* TVPCreateNativeClass_WaveSoundBuffer()
 {
+	// next: a minimal class that keeps what a script sets; KAG creates one at
+	// start-up, so answering nothing stops it here
 	return nullptr;
 }
 
