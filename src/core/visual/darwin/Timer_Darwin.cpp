@@ -71,11 +71,10 @@ namespace
 				entry.Next = std::chrono::steady_clock::now() + std::chrono::milliseconds(Interval);
 				gRunning.push_back(entry);
 			}
-			// Timer(owner, handler) - the second argument is the event handler
-			if(numparams >= 2 && param[1]->Type() != tvtVoid)
-			{
-				Handler = new tTJSVariant(*param[1]);
-			}
+			// Timer(handler, mode) - the handler is the *first* argument and the
+			// second is a mode string ('' means call the function directly)
+			if(numparams >= 1 && param[0]->Type() == tvtObject)
+				Handler = new tTJSVariant(*param[0]);
 			return TJS_S_OK;
 		}
 
