@@ -1,15 +1,11 @@
-// the scenario: init the engine, then run the lines, one call each
+// the scenario: bring the engine up, then show the lines one call each
 kagInit(640, 480);
 
-var lines = { "はじまりの朝。", "窓の外は、まだ青い。", "KiriKiri on arm64." };
-var y = 90;
-for (var i = 0; i < lines.count; ++i)
-{
-	kagShowLine(lines[i], y);
-	y += 90;
-}
+kagShowLine("はじまりの朝。", 90);
+kagShowLine("窓の外は、まだ青い。", 180);
+kagShowLine("KiriKiri on arm64.", 270);
 
-var bg = kagText.getMainPixel(600, 460);
+var bg = kagText.getMainPixel(620, 460);
 var drawn = 0;
 for (var yy = 40; yy < 420; ++yy)
 	for (var xx = 30; xx < 620; ++xx)

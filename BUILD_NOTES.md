@@ -461,7 +461,29 @@ $ ./build/krkrrun tests/layer.tjs
 - 填充矩形**钳到纹理边界**
 - `taskNum` 至少为 1
 
-### 18b. 子图层：KAG 的下一个障碍（定位中）
+### 18b. 子图层 ✅（结论：从来不是障碍，是我脚本写错了）
+
+**引擎的签名是 `new Layer(window, parentLayer)`**：
+- `param[0]` = **窗口**（要取它的 `layerTreeOwnerInterface`）
+- `param[1]` = 父图层（可选）
+
+我一直写的是 `new Layer(parentLayer, null)` —— 把父图层当成窗口传进去，于是取不到
+`layerTreeOwnerInterface`，引擎抛「Please specify layerTreeOwnerInterface object」并终止。
+**KAG 用的是正确顺序，所以这从来不是移植障碍。**
+
+正确用法（已验证）：
+```tjs
+var base = new Layer(win, null);        // 主图层
+var text = new Layer(win, base);        // 子图层，父图层在第二位
+text.fillRect(...); text.drawText(...);
+win.update();                            // 合成
+```
+输出：`wrote /tmp/child.bmp (320x240)`，exit=0。
+
+**这轮的教训比 bug 值钱**：诊断输出必须 `fflush`（stderr 接管道时全缓冲，`_exit` 会丢光）；
+以及**先怀疑自己的测试脚本**，再怀疑引擎。
+
+### 18b-old. 排查记录（保留）
 
 **先纠正一个测量错误**：之前记「静默退出 exit 0」是错的——那是 `cmd | head` 的退出码。
 真实是 **exit 1**，即引擎的**错误终止路径**（`TVPShowScriptException` → `TVPTerminateSync(1)`）。

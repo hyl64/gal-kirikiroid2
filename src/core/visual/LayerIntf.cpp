@@ -455,9 +455,12 @@ tjs_error TJS_INTF_METHOD
 tTJSNI_BaseLayer::Construct(tjs_int numparams, tTJSVariant **param,
 		iTJSDispatch2 *tjs_obj)
 {
+	DBG("c0 enter Construct");
 	if(numparams < 2) return TJS_E_BADPARAMCOUNT;
+	DBG("c1 params ok");
 
 	Owner = tjs_obj; // no addref
+	DBG("c2 owner");
 
 	// get the window native instance
 	tTJSVariantClosure clo = param[0]->AsObjectClosureNoAddRef();
