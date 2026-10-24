@@ -461,7 +461,26 @@ $ ./build/krkrrun tests/layer.tjs
 - 填充矩形**钳到纹理边界**
 - `taskNum` 至少为 1
 
-### 18b. 子图层：KAG 的下一个障碍（已定位，未解）
+### 18b. 子图层：KAG 的下一个障碍（定位中）
+
+**先纠正一个测量错误**：之前记「静默退出 exit 0」是错的——那是 `cmd | head` 的退出码。
+真实是 **exit 1**，即引擎的**错误终止路径**（`TVPShowScriptException` → `TVPTerminateSync(1)`）。
+
+**已确认的路径**（加了 `KRKR_DEBUG_LAYER` 打印）：
+```
+[layer] Construct parent=0x0 params=2     ← 主图层，parent 解析为 0，正常
+[Information] base ok
+<malloc for Bitmap>                        ← 子图层的位图被分配了
+→ exit 1                                   ← 走到终止路径，Construct 里的 parent 分支没打印
+```
+说明子图层的 **Construct 之后的某个环节**触发脚本错误，而错误文本还没到 stderr
+（只给 `TVPShowScriptException(eTJS&)` 加了打印，`eTJSScriptError` 那个重载和
+`TVPAddLog` 还没有）。
+
+**下一步**：给 `eTJSScriptError` 重载也加 stderr 输出、并让 `TVPAddLog` 可见——
+拿到真实错误文本后这个卡点应该就明朗了。
+
+### 18b-old. 原始记录（措辞已由上节纠正）
 准备 KAG 形状的引导脚本（`tests/minikag/`）时撞到一个具体障碍：
 
 ```tjs

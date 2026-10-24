@@ -11,6 +11,8 @@
 
 #include "tjsCommHead.h"
 
+#include <cstdio>
+
 #include "tjs.h"
 #include "tjsDebug.h"
 #include "tjsArray.h"
@@ -1188,6 +1190,10 @@ void TVPShowScriptException(eTJS &e)
 {
 	TVPSetSystemEventDisabledState(true);
 	TVPOnError();
+
+	// a host with no dialog still has to say what went wrong: this is the last
+	// place the message exists before the engine terminates
+	fprintf(stderr, "[script] %ls\n", (const wchar_t*)e.GetMessage().c_str());
 
 	if(!TVPSystemUninitCalled)
 	{

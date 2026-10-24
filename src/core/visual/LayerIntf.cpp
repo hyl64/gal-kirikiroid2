@@ -463,6 +463,9 @@ tTJSNI_BaseLayer::Construct(tjs_int numparams, tTJSVariant **param,
 			TVPThrowExceptionMessage(TVPSpecifyLayer);
 	}
 
+	if(getenv("KRKR_DEBUG_LAYER"))
+		fprintf(stderr, "[layer] Construct parent=%p params=%d\n", (void*)lay, (int)numparams);
+
 	// retrieve manager
 	// layer manager is the same as the parent, if the parent is given
 	if(lay)
