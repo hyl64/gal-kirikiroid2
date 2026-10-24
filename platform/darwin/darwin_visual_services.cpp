@@ -32,6 +32,9 @@
 #include "ClipboardIntf.h"
 #include "MenuItemIntf.h"
 #include "WindowIntf.h"
+#include "SysInitIntf.h"
+
+#include <set>
 
 // ---------------------------------------------------------------------------
 // the formats this back end does not decode
@@ -319,4 +322,359 @@ void TVPListDir(const std::string& folder, std::function<void(const std::string&
 		cb(e->d_name, isDir);
 	}
 	closedir(d);
+}
+
+// ---------------------------------------------------------------------------
+// the system control, the plug-in registry and the window list
+// ---------------------------------------------------------------------------
+//
+// environ/win32/SystemControl.cpp is the Windows application's control object:
+// it owns the event enable state, runs the idle callbacks and keeps the window
+// list.  A host that renders frames itself needs the names it exports, decided
+// the way a host with no plug-ins, no gamepad and no window list would decide
+// them.
+
+#include "SystemControl.h"
+
+tTVPSystemControl* TVPSystemControl = nullptr;
+bool TVPSystemControlAlive = false;
+
+// the engine's set of plug-in names; nothing loads any here
+std::set<ttstr> TVPRegisteredPlugins;
+
+void TVPSetCommandLine(const tjs_char* name, const ttstr& value)
+{
+	(void)name;
+	(void)value; // the original parses command line switches; a host has none
+}
+
+void TVPLoadInternalPlugins()
+{
+}
+
+void TVPLoadInternalPlugin(const ttstr& name)
+{
+	(void)name;
+}
+
+// no child windows: a layer is drawn into the same screen
+iWindowLayer* TVPCreateAndAddWindow(tTJSNI_Window* w)
+{
+	(void)w;
+	return nullptr;
+}
+
+bool TVPGetJoyPadAsyncState(tjs_uint keycode, bool getcurrent)
+{
+	(void)keycode;
+	(void)getcurrent;
+	return false; // no gamepad is connected
+}
+
+// ---------------------------------------------------------------------------
+// the last of the application's surface
+// ---------------------------------------------------------------------------
+
+// menu items, video overlays and image functions are script-side objects whose
+// platform half is the window; this back end offers none of them yet, so their
+// factories answer nothing rather than handing back a broken object
+iTJSDispatch2* TVPCreateMenuItemObject(iTJSDispatch2* window)
+{
+	(void)window;
+	return nullptr;
+}
+
+tTJSNativeClass* TVPCreateNativeClass_VideoOverlay()
+{
+	return nullptr;
+}
+
+tTJSNativeClass* TVPCreateNativeClass_ImageFunction()
+{
+	return nullptr;
+}
+
+bool TVPGetKeyMouseAsyncState(tjs_uint keycode, bool getcurrent)
+{
+	(void)keycode;
+	(void)getcurrent;
+	return false; // no input is being polled outside the window's events
+}
+
+void TVPClearAllWindowInputEvents()
+{
+}
+
+void TVPCauseAtInstallExtensionClass(iTJSDispatch2* global)
+{
+	(void)global;
+}
+
+void TVPFireOnApplicationActivateEvent(bool activate_or_deactivate)
+{
+	(void)activate_or_deactivate;
+}
+
+tjs_int TVPGetCommandLineArgumentGeneration()
+{
+	return 0; // the command line never changes here
+}
+
+// ---------------------------------------------------------------------------
+// the screen's metrics and the application's path
+// ---------------------------------------------------------------------------
+
+#include "Application.h"
+#include "TVPScreen.h"
+#include "WaveIntf.h"
+#include "tvpgl.h"
+
+ttstr ExePath()
+{
+	char cwd[1024];
+	if(getcwd(cwd, sizeof cwd) == nullptr)
+		return ttstr(".");
+	return ttstr(cwd);
+}
+
+// there is one display; its usable area is the SDL desktop mode's size
+static void DesktopSize(int& w, int& h)
+{
+	w = 0;
+	h = 0;
+	if(SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
+		return;
+	SDL_DisplayMode mode;
+	if(SDL_GetDesktopDisplayMode(0, &mode) == 0)
+	{
+		w = mode.w;
+		h = mode.h;
+	}
+}
+
+int tTVPScreen::GetWidth()
+{
+	int w = 0, h = 0;
+	DesktopSize(w, h);
+	return w;
+}
+
+int tTVPScreen::GetHeight()
+{
+	int w = 0, h = 0;
+	DesktopSize(w, h);
+	return h;
+}
+
+int tTVPScreen::GetDesktopLeft()
+{
+	return 0;
+}
+
+int tTVPScreen::GetDesktopTop()
+{
+	return 0;
+}
+
+int tTVPScreen::GetDesktopWidth()
+{
+	int w = 0, h = 0;
+	DesktopSize(w, h);
+	return w;
+}
+
+int tTVPScreen::GetDesktopHeight()
+{
+	int w = 0, h = 0;
+	DesktopSize(w, h);
+	return h;
+}
+
+// ---------------------------------------------------------------------------
+// sound buffers: this back end has no sound device yet
+// ---------------------------------------------------------------------------
+
+tTJSNativeClass* TVPCreateNativeClass_CDDASoundBuffer()
+{
+	return nullptr;
+}
+
+tTJSNativeClass* TVPCreateNativeClass_MIDISoundBuffer()
+{
+	return nullptr;
+}
+
+tTJSNativeClass* TVPCreateNativeClass_WaveSoundBuffer()
+{
+	return nullptr;
+}
+
+tTJSNativeClass* TVPCreateNativeClass_BitmapLayerTreeOwner()
+{
+	return nullptr;
+}
+
+// ---------------------------------------------------------------------------
+// the script-side window and menu objects
+// ---------------------------------------------------------------------------
+
+// tTJSNC_Window and tTJSNC_MenuItem are defined in the VCL application layer
+// (environ/win32/WindowFormUnit.cpp and friends), which the desktop does not
+// build; their factories answer nothing until this back end has window objects
+// of its own.  A game that asks for one gets nothing rather than a crash.
+tTJSNativeClass* TVPCreateNativeClass_Window()
+{
+	return nullptr;
+}
+
+tTJSNativeClass* TVPCreateNativeClass_MenuItem()
+{
+	return nullptr;
+}
+
+// ---------------------------------------------------------------------------
+// the application's globals
+// ---------------------------------------------------------------------------
+
+bool TVPTerminated = false;
+int TVPTerminateCode = 0;
+ttstr TVPProjectDir;
+
+ttstr TVPGetOSName()
+{
+	return ttstr("macOS");
+}
+
+void TVPCheckAbout()
+{
+}
+
+// ---------------------------------------------------------------------------
+// the application's start-up hooks
+// ---------------------------------------------------------------------------
+
+void TVPConsoleLog(const ttstr& mes, bool important)
+{
+	tTJSNarrowStringHolder narrow(mes.c_str());
+	fprintf(important ? stderr : stdout, "%s\n", (const char*)narrow);
+}
+
+void TVPInitFontNames()
+{
+}
+
+// the engine's system start-up: with the software render manager and the
+// FreeType rasterizers already in place there is nothing else to raise
+void TVPSystemInit()
+{
+	TVPInitTVPGL();
+}
+
+void TVPSystemUninit()
+{
+	TVPSystemUninitCalled = true;
+}
+
+void TVPLockSoundMixer()
+{
+}
+
+void TVPUnlockSoundMixer()
+{
+}
+
+ttstr TVPGetPlatformName()
+{
+	return ttstr("macOS");
+}
+
+void TVPExecuteUserConfig()
+{
+}
+
+void TVPCheckPrintDataPath()
+{
+}
+
+// the engine's base systems: the storage media, the script engine and the
+// graphics tables are already up in this host, so this only has to agree
+void TVPInitializeBaseSystems()
+{
+	TVPInitTVPGL();
+}
+
+void TVPResetVolumeToAllSoundBuffer()
+{
+}
+
+// the script-side window's content update; there is no window object yet
+void tTJSNI_BaseWindow::UpdateContent()
+{
+}
+
+// the system control's idle pass: no events are queued here
+void tTVPSystemControl::InvokeEvents()
+{
+}
+
+// the system control's idle bookkeeping: without an idle loop none of it runs
+void tTVPSystemControl::BeginContinuousEvent()
+{
+}
+
+void tTVPSystemControl::EndContinuousEvent()
+{
+}
+
+void tTVPSystemControl::NotifyEventDelivered()
+{
+}
+
+// The system control object itself: the Windows one starts timers, a watcher
+// thread and a message queue.  A host that drives its own frames needs the
+// object to exist and its two idle entry points to be quiet, so this is the
+// smallest one that satisfies the class.
+tTVPSystemControl::tTVPSystemControl()
+{
+}
+
+void tTVPSystemControl::CallDeliverAllEventsOnIdle()
+{
+}
+
+void tTVPSystemControl::SystemWatchTimerTimer()
+{
+}
+
+// whether closing the last window ends the engine
+bool TVPTerminateOnWindowClose = true;
+
+// the engine's asynchronous termination: a host that owns its loop just records
+// the request, and Terminate() is where it would act on it
+void TVPTerminateAsync(int code)
+{
+	TVPTerminateCode = code;
+	TVPTerminated = true;
+}
+
+int TVPGetPadCount()
+{
+	return 0; // no pad is connected
+}
+
+// the clipboard object and PCM conversion: the script-side clipboard is the
+// system's (TVPClipboardGet/SetText above), and the mixer's format conversion
+// has no caller until sound exists
+tTJSNativeClass* TVPCreateNativeClass_Clipboard()
+{
+	return nullptr;
+}
+
+void TVPConvertPCMToFloat(float* dest, const void* src, const tTVPWaveFormat& format, int count)
+{
+	(void)src;
+	(void)format;
+	if(dest != nullptr)
+		for(int i = 0; i < count; i++)
+			dest[i] = 0.0f;
 }

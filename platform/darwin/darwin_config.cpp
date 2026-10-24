@@ -69,3 +69,31 @@ std::string IndividualConfigManager::GetValue<std::string>(const std::string& na
 	auto it = AllConfig.find(name);
 	return it == AllConfig.end() ? defVal : it->second;
 }
+
+// ---------------------------------------------------------------------------
+// the locale strings
+// ---------------------------------------------------------------------------
+//
+// environ/ConfigManager/LocaleConfigManager.cpp reads locale XML through
+// cocos2d's file utils.  The desktop host has no locale pack, so the same class
+// answers every id with the id itself: the engine's messages are already English
+// in the catalogue it carries, and a missing translation reads as the key.
+
+#include "LocaleConfigManager.h"
+
+LocaleConfigManager* LocaleConfigManager::GetInstance()
+{
+	static LocaleConfigManager instance;
+	return &instance;
+}
+
+const std::string& LocaleConfigManager::GetText(const std::string& tid)
+{
+	static std::string last;
+	last = tid;
+	return last;
+}
+
+LocaleConfigManager::LocaleConfigManager()
+{
+}

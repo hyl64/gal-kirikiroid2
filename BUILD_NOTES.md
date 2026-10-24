@@ -342,6 +342,25 @@ presented 60 frame(s) on 'cocoa'      ← 真的开了一个 Cocoa 窗口
 为保证构建全绿，`LayerIntf.cpp` 等仍**没有**加入构建（不留坏目标）；9 个工具全部
 回归通过（`krkrpresent` 逐像素 0 差异）。
 
+### 14. 位图层的字体与文字度量（本轮新增，9 个工具全绿）
+从 win32 版搬进 `visual/darwin/LayerBitmapImpl.cpp` 的三段**纯可移植**代码：
+
+| 函数 | 作用 |
+|---|---|
+| `tTVPNativeBaseBitmap::ApplyFont()` | 解析该位图使用的字体（走栅格化器 + 预渲染字体映射） |
+| `GetFontList` / `GetTextSize` / `GetTextWidth` / `GetTextHeight` / `GetEscWidthX/Y` / `GetEscHeightX/Y` / `GetFontGlyphDrawRect` | 文字度量：字形推进、行高、转义宽度、绘制矩形 |
+| `TVPGlobalFontStateMagic` + `TVPGetPrerenderedMappedFont` | 栅格化器切换计数 + 游戏自带位图字体的映射查询（放进 `FontRasterizers_Darwin.cpp`） |
+
+另加 `platform/compat/xmmlib.h`（空兼容头：`sound/MathAlgorithms.h` 只是 include 它，
+不使用其中任何符号），以及 `platform/darwin/darwin_visual_services.cpp` 里
+**约 20 个系统层符号**的实实现或空实现（事件、剪贴板、屏幕度量、系统控制、
+插件/手柄、脚本异常、LocaleConfigManager…）。
+
+**结果**：`LayerIntf.cpp`/`ScriptMgnIntf.cpp`/`Application.cpp`/`LayerManager.cpp`
+这一批**都能编译**；剩余缺口 = 文字**绘制**（`DrawTextSingle`/`DrawTextMultiple`，
+上游是 GDI 实现，需按预渲染字形 + tvpgl 重写）+ 脚本侧 `Window`/`MenuItem` 类
+（定义在 VCL 应用层）。
+
 ## 窗口层的真实工作量（下一步，已勘察清楚）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：

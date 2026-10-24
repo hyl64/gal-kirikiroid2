@@ -23,6 +23,16 @@
 #include "win32/BitmapBitsAlloc.h"
 #include "tjsError.h"
 #include "MsgIntf.h"
+#include "PrerenderedFont.h"
+#include "FontRasterizer.h"
+
+// the rasterizer and the font list, as the Windows back end declares them
+extern FontRasterizer* GetCurrentRasterizer();
+extern tjs_int TVPGlobalFontStateMagic; // bumped when the rasterizer changes
+extern tTVPPrerenderedFont* TVPGetPrerenderedMappedFont(const tTVPFont& font);
+extern void TVPGetAllFontList(std::vector<ttstr>& list);
+extern void TVPMapPrerenderedFont(const tTVPFont& font, const ttstr& storage);
+extern void TVPUnmapPrerenderedFont();
 
 // the window options the engine keeps (bitmap alignment and the like) are
 // initialised on first use; the desktop defaults need nothing set up
@@ -374,3 +384,149 @@ void tTVPBitmap::SetPaletteCount( tjs_uint count ) {
 //---------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// font list and text metrics
+// ---------------------------------------------------------------------------
+//
+// No platform call in these: they ask the rasterizer and the prerendered font
+// for advances and heights, the same arithmetic on every back end (moved from
+// visual/win32/LayerBitmapImpl.cpp).
+void tTVPNativeBaseBitmap::GetFontList(tjs_uint32 flags, std::vector<ttstr> &list)
+{
+	ApplyFont();
+	std::vector<ttstr> ansilist;
+	TVPGetAllFontList(ansilist);
+	for(std::vector<ttstr>::iterator i = ansilist.begin(); i != ansilist.end(); i++)
+		list.push_back(*i);
+}
+
+void tTVPNativeBaseBitmap::GetTextSize(const ttstr & text)
+{
+	ApplyFont();
+
+	if(text != CachedText)
+	{
+		CachedText = text;
+
+		if(PrerenderedFont)
+		{
+			tjs_uint width = 0;
+			const tjs_char *buf = text.c_str();
+			while(*buf)
+			{
+				const tTVPPrerenderedCharacterItem * item =
+					PrerenderedFont->Find(*buf);
+				if(item != NULL)
+				{
+					width += item->Inc;
+				}
+				else
+				{
+					tjs_int w, h;
+					GetCurrentRasterizer()->GetTextExtent( *buf, w, h );
+					width += w;
+				}
+				buf++;
+			}
+			TextWidth = width;
+			TextHeight = std::abs(Font.Height);
+		}
+		else
+		{
+			tjs_uint width = 0;
+			const tjs_char *buf = text.c_str();
+
+			while(*buf)
+			{
+				tjs_int w, h;
+				GetCurrentRasterizer()->GetTextExtent( *buf, w, h );
+				width += w;
+				buf++;
+			}
+			TextWidth = width;
+			TextHeight = std::abs(Font.Height);
+		}
+	}
+}
+
+tjs_int tTVPNativeBaseBitmap::GetTextWidth(const ttstr & text)
+{
+	GetTextSize(text);
+	return TextWidth;
+}
+
+tjs_int tTVPNativeBaseBitmap::GetTextHeight(const ttstr & text)
+{
+	GetTextSize(text);
+	return TextHeight;
+}
+
+double tTVPNativeBaseBitmap::GetEscWidthX(const ttstr & text)
+{
+	GetTextSize(text);
+	return cos(RadianAngle) * TextWidth;
+}
+
+double tTVPNativeBaseBitmap::GetEscWidthY(const ttstr & text)
+{
+	GetTextSize(text);
+	return sin(RadianAngle) * (-TextWidth);
+}
+
+double tTVPNativeBaseBitmap::GetEscHeightX(const ttstr & text)
+{
+	GetTextSize(text);
+	return sin(RadianAngle) * TextHeight;
+}
+
+double tTVPNativeBaseBitmap::GetEscHeightY(const ttstr & text)
+{
+	GetTextSize(text);
+	return cos(RadianAngle) * TextHeight;
+}
+
+void tTVPNativeBaseBitmap::GetFontGlyphDrawRect( const ttstr & text, struct tTVPRect& area )
+{
+	ApplyFont();
+	GetCurrentRasterizer()->GetGlyphDrawRect( text, area );
+}
+
+// ---------------------------------------------------------------------------
+// the font the bitmap draws with
+// ---------------------------------------------------------------------------
+//
+// Portable: it resolves the face through the rasterizer and asks the prerendered
+// font map for a stand-in when the game shipped bitmap glyphs.
+void tTVPNativeBaseBitmap::ApplyFont()
+{
+	// apply font
+	if(FontChanged || GlobalFontState != TVPGlobalFontStateMagic)
+	{
+		Independ();
+
+		FontChanged = false;
+		GlobalFontState = TVPGlobalFontStateMagic;
+		CachedText.Clear();
+		TextWidth = TextHeight = 0;
+
+		if(PrerenderedFont) PrerenderedFont->Release();
+		PrerenderedFont = TVPGetPrerenderedMappedFont(Font);
+
+		// compute ascent offset
+		GetCurrentRasterizer()->ApplyFont( this, true );
+		tjs_int ascent = GetCurrentRasterizer()->GetAscentHeight();
+		RadianAngle = Font.Angle * (M_PI/1800);
+		double angle90 = RadianAngle + M_PI_2;
+		AscentOfsX = static_cast<tjs_int>(-cos(angle90) * ascent);
+		AscentOfsY = static_cast<tjs_int>(sin(angle90) * ascent);
+
+		// compute font hash
+		FontHash = tTJSHashFunc<ttstr>::Make(Font.Face);
+		FontHash ^= Font.Height ^ Font.Flags ^ Font.Angle;
+	}
+	else
+	{
+		GetCurrentRasterizer()->ApplyFont( this, false );
+	}
+}

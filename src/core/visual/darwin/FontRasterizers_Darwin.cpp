@@ -20,11 +20,19 @@
 #include "MsgIntf.h"
 #include "SysInitIntf.h"
 
+// the state counter ApplyFont compares against
+tjs_int TVPGlobalFontStateMagic = 0;
+
+
+// the lookup of a game's prerendered font for a face
+tTVPPrerenderedFont* TVPGetPrerenderedMappedFont(const tTVPFont& font);
+
 void TVPClearFontCache(); // clears the glyph cache after a rasterizer change
 
 //---------------------------------------------------------------------------
-FontSystem* TVPFontSystem = NULL;
-static tjs_int TVPGlobalFontStateMagic = 0;
+// TVPFontSystem is defined in darwin_font.cpp alongside the default face
+extern FontSystem* TVPFontSystem;
+
 	// this is for checking global font status' change
 
 
@@ -191,4 +199,23 @@ static tTVPAtExit TVPUnmapAllPrerenderedFontsAtExit
 // cache to clear yet.
 void TVPClearFontCache()
 {
+}
+tTVPPrerenderedFont* TVPGetPrerenderedMappedFont(const tTVPFont &font)
+{
+	// search mapped prerendered font
+	std::vector<tTVPPrerenderedFontMap>::iterator i;
+	for(i = TVPPrerenderedFontMapVector.begin();
+		i !=TVPPrerenderedFontMapVector.end(); i++)
+	{
+		if(i->Font == font)
+		{
+			// found font
+			// replace existing
+			i->Object->AddRef();
+
+			// note that the object is AddRefed
+			return i->Object;
+		}
+	}
+	return NULL;
 }
