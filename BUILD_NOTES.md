@@ -539,6 +539,36 @@ if(iTVPLayerManager* m = primary->GetManager())
 至此引擎②的显示链路完整：**脚本 → 窗口 → 图层树（父/子）→ 图层管理器合成
 → 绘制设备 → 帧**。
 
+### 18f. mini-KAG 跑起来了，但合成在 640×480 多图层下不完整（待查）
+
+`tests/minikag/`：KAG 形状的引导（`system.tjs` 建窗口与两个图层 + `showLine`，
+`first.tjs` 逐行推进），合并成 `run.tjs` 运行：
+
+```
+[Information] engine up: 640x480, two layers
+[Information] line shown: はじまりの朝。
+[Information] line shown: 窓の外は、まだ青い。
+[Information] line shown: KiriKiri on arm64.
+[Information] scenario finished, pixels drawn: 25061
+wrote /tmp/mk3.bmp (640x480, presented frame)
+```
+
+**台词确实画进了子图层**（25061 个像素），但**呈现帧只有一种颜色**（主图层底色
+`(48,32,16)`）——子图层没被合成进去。
+
+**对照实验**：`screenshots/child-layer-composed.png`（320×240、一次 `update()`、
+子层只画文字）**是成功的**。差异在于本测试是 **640×480 + 三次 update**。
+
+所以问题缩小成一个可复现的对比：
+| | child6（成功） | mini-KAG（失败） |
+|---|---|---|
+| 尺寸 | 320×240 | 640×480 |
+| update 次数 | 1 | 3 |
+| 子层内容 | 只有文字 | 框 + 三次文字 |
+
+**下一步**：分别只改一个变量（先试 640×480 单次 update），二分出是尺寸还是多次
+update 导致 `DrawBuffer` 的合成失效。
+
 ### 18d. 更新链路接上了，合成仍不落（历史）
 
 **修好的一处**：脚本 `win.update()` → `tTJSNI_Window::Update` → `Form->UpdateWindow()`，

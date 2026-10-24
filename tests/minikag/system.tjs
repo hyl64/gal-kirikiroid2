@@ -15,9 +15,9 @@ function kagInit(width, height)
 	kagBase.setSize(width, height);
 	kagBase.fillRect(0, 0, width, height, 0xff102030);
 
-	kagText = new Layer(kagBase, null);
+	kagText = new Layer(kagWindow, kagBase);
 	kagText.setSize(width, height);
-	kagText.fillRect(0, 0, width, height, 0x00000000);
+
 	System.inform("engine up: " + width + "x" + height + ", two layers");
 }
 
