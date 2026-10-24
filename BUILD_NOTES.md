@@ -513,7 +513,33 @@ if( DrawDevice ) {
 那一段——`DrawDevice` 为空说明那次 `PropGet("interface")` 的结果没有被正确解释，
 或者窗口构造时根本没有调用到 `SetDrawDeviceObject`。
 
-### 18d. 更新链路接上了，合成仍不落（本轮进展）
+### 18e. 合成链路打通 ✅（脚本 → 窗口 → 图层树 → 设备 → 帧）
+
+最后一块是**合成发生在哪里**。答案：既不在主图层，也不在设备的分块回调里——
+`tTVPLayerManager` 自己有一块 `DrawBuffer`（`tTVPDestTexture`），`DrawCompleted`
+把每层 `Blt` 进去，**那才是最终的帧**。
+
+修复（`DrawDevice_Darwin.cpp`）：
+
+```cpp
+tTVPBaseTexture* screen = primary->GetMainImage();
+if(iTVPLayerManager* m = primary->GetManager())
+    if(tTVPLayerManager* lm = dynamic_cast<tTVPLayerManager*>(m))
+        if(tTVPBaseTexture* composed = lm->GetOrCreateDrawBuffer())
+            screen = composed;          // ← 呈现合成缓冲，而不是主图层
+```
+
+同时 `Show()` 会把呈现出去的那一帧留下来（`Presented`），`krkrrun --screenshot`
+优先取它——之前的截图读主图层，**根本看不到设备呈现的东西**。
+
+**证据**：子图层脚本 `new Layer(win, base)` + `drawText` + `win.update()` →
+`screenshots/child-layer-composed.png`，320×240，画面上就是子图层写的那行
+「child layer works」，底色是主图层的填充。470 个非背景像素。
+
+至此引擎②的显示链路完整：**脚本 → 窗口 → 图层树（父/子）→ 图层管理器合成
+→ 绘制设备 → 帧**。
+
+### 18d. 更新链路接上了，合成仍不落（历史）
 
 **修好的一处**：脚本 `win.update()` → `tTJSNI_Window::Update` → `Form->UpdateWindow()`，
 而 `Form` 是 VCL 窗体，桌面上是空的 → **什么也不做**。改成没有 Form 时走引擎自己的

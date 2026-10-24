@@ -100,7 +100,27 @@ static void Register(iTJSDispatch2* global, const tjs_char* name, iTJSDispatch2*
 // what the window composited, written out so the frame can be looked at
 static bool SaveComposed(const char* path)
 {
+	// what the device presented is the frame; the primary layer is only a
+	// fallback for a run that never reached Show()
+	extern const uint32_t* TVPDrawDeviceDarwinGetFrame(int* width, int* height);
 	extern iTVPDrawDevice* TVPGetLastDrawDeviceDarwin();
+	int fw = 0, fh = 0;
+	if(const uint32_t* frame = TVPDrawDeviceDarwinGetFrame(&fw, &fh))
+	{
+		if(fw > 0 && fh > 0)
+		{
+			SDL_Surface* s2 = SDL_CreateRGBSurfaceWithFormatFrom((void*)frame, fw, fh, 32, fw * 4,
+				SDL_PIXELFORMAT_ARGB8888);
+			const bool ok2 = s2 != nullptr && SDL_SaveBMP(s2, path) == 0;
+			if(s2 != nullptr)
+				SDL_FreeSurface(s2);
+			if(ok2)
+			{
+				printf("wrote %s (%dx%d, presented frame)\n", path, fw, fh);
+				return true;
+			}
+		}
+	}
 	iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin();
 	if(device == nullptr)
 	{

@@ -16,6 +16,7 @@
 
 #include "tjsCommHead.h"
 #include "DrawDevice.h"
+#include "LayerManager.h"
 #include "RenderManager.h"
 
 #include <SDL.h>
@@ -49,11 +50,10 @@ public:
 	// candidate for a screenshot: the pixels the last Show() put on the screen
 	bool SaveScreen(const char* path);
 
-	// the frame the layer manager composited, tile by tile
-	std::vector<uint32_t> Composed;
-	int ComposedW = 0;
-	int ComposedH = 0;
-	bool ComposedDirty = false;
+	// the frame the last Show() put on the display, kept for the tools
+	std::vector<uint32_t> Presented;
+	int PresentedW = 0;
+	int PresentedH = 0;
 };
 
 tTVPDrawDevice_Darwin::tTVPDrawDevice_Darwin()
@@ -112,25 +112,18 @@ void tTVPDrawDevice_Darwin::EnsureWindow(int w, int h)
 // the compositor's output, onto the display
 void TJS_INTF_METHOD tTVPDrawDevice_Darwin::Show()
 {
-	if(getenv("KRKR_DEBUG_DEV")) { fprintf(stderr, "[dev] Show composed=%d %dx%d\n",
-		(int)ComposedDirty, ComposedW, ComposedH); fflush(stderr); }
+	if(getenv("KRKR_DEBUG_DEV")) { fprintf(stderr, "[dev] Show\n"); fflush(stderr); }
 	tTJSNI_BaseLayer* primary = GetPrimaryLayer();
 	if(primary == nullptr)
 		return;
+	// The layer manager composites into a draw buffer of its own; that is the
+	// frame to show, not the primary layer's bitmap.
 	tTVPBaseTexture* screen = primary->GetMainImage();
-	if(ComposedDirty && ComposedW > 0 && screen != nullptr
-		&& (int)screen->GetWidth() == ComposedW && (int)screen->GetHeight() == ComposedH)
+	if(iTVPLayerManager* manager = primary->GetManager())
 	{
-		// the composite the layer manager produced, into the layer it belongs to
-		for(int yy = 0; yy < ComposedH; yy++)
-		{
-			uint32_t* dst = (uint32_t*)screen->GetScanLineForWrite(yy);
-			if(dst == nullptr)
-				continue;
-			const uint32_t* src = &Composed[(size_t)yy * ComposedW];
-			for(int xx = 0; xx < ComposedW; xx++)
-				dst[xx] = src[xx];
-		}
+		if(tTVPLayerManager* concrete = dynamic_cast<tTVPLayerManager*>(manager))
+			if(tTVPBaseTexture* composed = concrete->GetOrCreateDrawBuffer())
+				screen = composed;
 	}
 	if(screen == nullptr)
 		return;
@@ -141,6 +134,20 @@ void TJS_INTF_METHOD tTVPDrawDevice_Darwin::Show()
 	EnsureWindow(w, h);
 	if(Screen == nullptr)
 		return;
+	if(w > 0 && h > 0)
+	{
+		Presented.assign((size_t)w * h, 0);
+		PresentedW = w;
+		PresentedH = h;
+		for(int yy = 0; yy < h; yy++)
+		{
+			const uint32_t* src = (const uint32_t*)screen->GetScanLine(yy);
+			if(src == nullptr)
+				continue;
+			for(int xx = 0; xx < w; xx++)
+				Presented[(size_t)yy * w + xx] = src[xx];
+		}
+	}
 	SDL_UpdateTexture(Screen, nullptr, screen->GetScanLine(0), screen->GetPitchBytes());
 	SDL_RenderClear(Renderer);
 	SDL_RenderCopy(Renderer, Screen, nullptr, nullptr);
@@ -176,22 +183,6 @@ void TJS_INTF_METHOD tTVPDrawDevice_Darwin::NotifyBitmapCompleted(iTVPLayerManag
 	const int h = (int)bmp->GetHeight();
 	if(w <= 0 || h <= 0)
 		return;
-	// a tile of the frame: keep it, and remember where it came from
-	if(ComposedW != w || ComposedH != h)
-	{
-		Composed.assign((size_t)w * h, 0);
-		ComposedW = w;
-		ComposedH = h;
-	}
-	for(tjs_int yy = cliprect.top; yy < cliprect.bottom && yy < h; yy++)
-	{
-		const uint32_t* src = (const uint32_t*)bmp->GetScanLine(yy);
-		uint32_t* dst = &Composed[(size_t)(y + yy) * ComposedW];
-		for(tjs_int xx = cliprect.left; xx < cliprect.right && xx < w; xx++)
-			if(y + yy < ComposedH && x + xx < ComposedW)
-				dst[x + xx] = src[xx];
-	}
-	ComposedDirty = true;
 }
 
 void TJS_INTF_METHOD tTVPDrawDevice_Darwin::EndBitmapCompletion(iTVPLayerManager* manager)
@@ -223,6 +214,16 @@ tTVPDrawDevice* TVPCreateDrawDeviceDarwin()
 {
 	gLastDevice = new tTVPDrawDevice_Darwin();
 	return gLastDevice;
+}
+
+// what the last Show() presented, for krkrrun's --screenshot
+const uint32_t* TVPDrawDeviceDarwinGetFrame(int* width, int* height)
+{
+	if(gLastDevice == nullptr)
+		return nullptr;
+	*width = gLastDevice->PresentedW;
+	*height = gLastDevice->PresentedH;
+	return gLastDevice->Presented.empty() ? nullptr : gLastDevice->Presented.data();
 }
 
 iTVPDrawDevice* TVPGetLastDrawDeviceDarwin()
