@@ -1519,7 +1519,16 @@ void tTJSNI_Window::BringToFront()
 //---------------------------------------------------------------------------
 void tTJSNI_Window::Update(tTVPUpdateType type)
 {
-	if(Form) Form->UpdateWindow(type);
+	if(Form)
+	{
+		Form->UpdateWindow(type);
+		return;
+	}
+	// No VCL form on the desktop: the engine's own update path is what the
+	// window would have driven anyway - composite through the layer manager and
+	// show the result through the draw device.
+	(void)type;
+	UpdateContent();
 }
 //---------------------------------------------------------------------------
 void tTJSNI_Window::ShowModal()

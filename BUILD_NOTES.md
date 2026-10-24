@@ -513,6 +513,30 @@ if( DrawDevice ) {
 那一段——`DrawDevice` 为空说明那次 `PropGet("interface")` 的结果没有被正确解释，
 或者窗口构造时根本没有调用到 `SetDrawDeviceObject`。
 
+### 18d. 更新链路接上了，合成仍不落（本轮进展）
+
+**修好的一处**：脚本 `win.update()` → `tTJSNI_Window::Update` → `Form->UpdateWindow()`，
+而 `Form` 是 VCL 窗体，桌面上是空的 → **什么也不做**。改成没有 Form 时走引擎自己的
+`UpdateContent()`：
+
+```cpp
+void tTJSNI_Window::Update(tTVPUpdateType type)
+{
+	if(Form) { Form->UpdateWindow(type); return; }
+	UpdateContent();   // 桌面后端：合成 + 上屏就是引擎自己的这条路径
+}
+```
+
+效果：`[dev] Update` 和 `[dev] Show` **开始被调用了**（之前一次都没有）。
+
+**仍未落地的**：`NotifyBitmapCompleted` 一次都没被调用（`Show composed=0 0x0`），
+主图层位图里也没有子层内容。说明 CPU 合成不是通过分块回调交给设备的，而是画进
+**设备自己的屏幕表面**——`tTVPBasicDrawDevice` 在 win32 版里就自带
+`ScreenTexture`，而我们的设备**没有这个表面**。
+
+**下一步**：给 `tTVPDrawDevice_Darwin` 加一块自己的合成表面（尺寸跟随窗口），
+让图层管理器往里画，`Show()` 直接呈现它，而不是去读主图层位图。
+
 ### 18b-old. 排查记录（保留）
 
 **先纠正一个测量错误**：之前记「静默退出 exit 0」是错的——那是 `cmd | head` 的退出码。

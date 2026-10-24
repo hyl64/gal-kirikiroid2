@@ -281,6 +281,11 @@ void tTJSNI_BaseWindow::FireOnActivate(bool activate_or_deactivate)
 //---------------------------------------------------------------------------
 void tTJSNI_BaseWindow::SetDrawDeviceObject(const tTJSVariant & val)
 {
+	if(getenv("KRKR_DEBUG_DEV2"))
+	{
+		fprintf(stderr, "[win] SetDrawDeviceObject type=%d\n", (int)val.Type());
+		fflush(stderr);
+	}
 	// invalidate existing draw device
 	if(DrawDeviceObject.Type() == tvtObject)
 		DrawDeviceObject.AsObjectClosureNoAddRef().Invalidate(0, NULL, NULL, DrawDeviceObject.AsObjectNoAddRef());
@@ -296,6 +301,12 @@ void tTJSNI_BaseWindow::SetDrawDeviceObject(const tTJSVariant & val)
 		tTJSVariant iface_v;
 		if(TJS_FAILED(clo.PropGet(0, TJS_W("interface"), NULL, &iface_v, NULL)))
 			TVPThrowExceptionMessage( TVPCannotRetriveInterfaceFromDrawDevice );
+		if(getenv("KRKR_DEBUG_DEV2"))
+		{
+			fprintf(stderr, "[win] interface variant type=%d int=%lld\n", (int)iface_v.Type(),
+				(long long)(tjs_int64)iface_v);
+			fflush(stderr);
+		}
 		DrawDevice =
 			reinterpret_cast<iTVPDrawDevice *>((tjs_intptr_t)(tjs_int64)iface_v);
 		DrawDevice->SetWindowInterface(const_cast<tTJSNI_BaseWindow*>(this));

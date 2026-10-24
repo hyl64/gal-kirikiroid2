@@ -48,6 +48,12 @@ public:
 
 	// candidate for a screenshot: the pixels the last Show() put on the screen
 	bool SaveScreen(const char* path);
+
+	// the frame the layer manager composited, tile by tile
+	std::vector<uint32_t> Composed;
+	int ComposedW = 0;
+	int ComposedH = 0;
+	bool ComposedDirty = false;
 };
 
 tTVPDrawDevice_Darwin::tTVPDrawDevice_Darwin()
@@ -106,11 +112,26 @@ void tTVPDrawDevice_Darwin::EnsureWindow(int w, int h)
 // the compositor's output, onto the display
 void TJS_INTF_METHOD tTVPDrawDevice_Darwin::Show()
 {
-	if(getenv("KRKR_DEBUG_DEV")) { fprintf(stderr, "[dev] Show\n"); fflush(stderr); }
+	if(getenv("KRKR_DEBUG_DEV")) { fprintf(stderr, "[dev] Show composed=%d %dx%d\n",
+		(int)ComposedDirty, ComposedW, ComposedH); fflush(stderr); }
 	tTJSNI_BaseLayer* primary = GetPrimaryLayer();
 	if(primary == nullptr)
 		return;
 	tTVPBaseTexture* screen = primary->GetMainImage();
+	if(ComposedDirty && ComposedW > 0 && screen != nullptr
+		&& (int)screen->GetWidth() == ComposedW && (int)screen->GetHeight() == ComposedH)
+	{
+		// the composite the layer manager produced, into the layer it belongs to
+		for(int yy = 0; yy < ComposedH; yy++)
+		{
+			uint32_t* dst = (uint32_t*)screen->GetScanLineForWrite(yy);
+			if(dst == nullptr)
+				continue;
+			const uint32_t* src = &Composed[(size_t)yy * ComposedW];
+			for(int xx = 0; xx < ComposedW; xx++)
+				dst[xx] = src[xx];
+		}
+	}
 	if(screen == nullptr)
 		return;
 	int w = (int)screen->GetWidth();
@@ -147,12 +168,30 @@ void TJS_INTF_METHOD tTVPDrawDevice_Darwin::NotifyBitmapCompleted(iTVPLayerManag
 	tjs_int opacity)
 {
 	(void)manager;
-	(void)x;
-	(void)y;
-	(void)bmp;
-	(void)cliprect;
 	(void)type;
 	(void)opacity;
+	if(bmp == nullptr)
+		return;
+	const int w = (int)bmp->GetWidth();
+	const int h = (int)bmp->GetHeight();
+	if(w <= 0 || h <= 0)
+		return;
+	// a tile of the frame: keep it, and remember where it came from
+	if(ComposedW != w || ComposedH != h)
+	{
+		Composed.assign((size_t)w * h, 0);
+		ComposedW = w;
+		ComposedH = h;
+	}
+	for(tjs_int yy = cliprect.top; yy < cliprect.bottom && yy < h; yy++)
+	{
+		const uint32_t* src = (const uint32_t*)bmp->GetScanLine(yy);
+		uint32_t* dst = &Composed[(size_t)(y + yy) * ComposedW];
+		for(tjs_int xx = cliprect.left; xx < cliprect.right && xx < w; xx++)
+			if(y + yy < ComposedH && x + xx < ComposedW)
+				dst[x + xx] = src[xx];
+	}
+	ComposedDirty = true;
 }
 
 void TJS_INTF_METHOD tTVPDrawDevice_Darwin::EndBitmapCompletion(iTVPLayerManager* manager)
