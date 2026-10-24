@@ -678,6 +678,43 @@ initialize failed: Member "MenuItem" does not exist
 VCL 应用层里，我们当时用空工厂顶替。这是**具体可做的一件事**：给桌面后端写一个最小的
 MenuItem 类（菜单栏在 galgame 里用得不多，KAG 只是要在启动时创建它）。
 
+### 20e. MenuItem 类写好了，但 `super.MenuItem(...)` 不解析（下一关）
+
+`visual/darwin/MenuItem_Darwin.cpp`：一个没有菜单栏的 MenuItem——脚本能设的
+`caption/visible/enabled/checked/radio/group`，能调的 `add/remove/click`，全部实现，
+不画任何东西。已注册（`krkrrun` 里加了一行）。
+
+**KAG 的模块加载继续变多**（现在读到 AnimationLayer/GraphicLayer）：
+
+```
+AnimationLayer.tjs を読み込みました(2ms)
+GraphicLayer.tjs を読み込みました(1ms)
+MessageLayer.tjs を読み込みました(4ms)
+Menus.tjs を読み込みました(1ms)
+DefaultMover.tjs を読み込みました(1ms)
+MainWindow.tjs を読み込みました(8ms)
+スクリプトの読み込みに 27ms かかりました
+initialize failed: Member "MenuItem" does not exist
+```
+
+**缩小到一行**：KAG 的 `KAGMenuItem` 构造里写的是
+```tjs
+super.MenuItem(window, caption);
+```
+用最小脚本验证：
+```tjs
+class T2 extends MenuItem { function T2() { super.MenuItem(null, "x"); } }
+new T2();       → 静默失败
+```
+而 `class T2 extends MenuItem {}`（不调 super 构造）是**可以**的。
+
+所以卡点是 **TJS2 里「用 `super.原生类名(...)` 调父类构造」这一语法**对**原生类**不生效。
+上游的原生类（例如 Window）在真实 Kirikiroid2 里支持这种写法，说明我们的原生类注册
+缺少某个让 `super.类名` 可解析的成员。
+
+**下一步**：查 `tTJSNativeClass` 的成员表里「以类名为名的构造入口」是怎么建立的
+（`TJS_BEGIN_NATIVE_CONSTRUCTOR_DECL` 注册的成员名 vs. `super.` 的查找规则）。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
