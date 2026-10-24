@@ -477,8 +477,22 @@ $ ./build/krkrrun tests/layer.tjs
 （只给 `TVPShowScriptException(eTJS&)` 加了打印，`eTJSScriptError` 那个重载和
 `TVPAddLog` 还没有）。
 
-**下一步**：给 `eTJSScriptError` 重载也加 stderr 输出、并让 `TVPAddLog` 可见——
-拿到真实错误文本后这个卡点应该就明朗了。
+**本轮补充**（都做了，仍未拿到错误文本）：
+- 两个 `TVPShowScriptException` 重载都加了 stderr 输出，并且**挪到 `TVPOnError()` 之前**
+  （`TVPOnError` 可能直接结束进程）
+- `atexit` 回溯钩子（`KRKR_TRACE_EXIT=1`）证明**不是 `exit()`**，而是 `_exit()` 类调用
+- `tTJSNI_BaseLayer::Join` / `RegisterSelfToWindow` 加了打印，**一次都没打出来**
+
+**由此确定**：子图层连 `Construct` 都没进（第二次 Construct 的打印没有出现），
+进程在「原生实例创建之后、`Construct` 之前」就结束了。位图分配发生在这一步
+（`malloc for Bitmap`），所以嫌疑落在 `tTJSNI_BaseLayer` 构造函数尾部或 TJS 的
+`tTJSNativeClassConstructor::FuncCall`。
+
+**顺带修掉一个真 bug**：`tTVPBitmap` 的像素大小原本读 `BitmapInfo->GetImageSize()`
+（即 `biSizeImage`，BI_RGB 下为 0 或垃圾值，实测 32×32 得到 1.1GB）；
+改成按 `((w*bpp+31)/32)*4 * h` 自己算。这解释了此前一次异常的巨大尺寸。
+
+**下一步**：在 `tTJSNI_BaseLayer` 构造函数每一行之间加打印，定位到具体语句。
 
 ### 18b-old. 原始记录（措辞已由上节纠正）
 准备 KAG 形状的引导脚本（`tests/minikag/`）时撞到一个具体障碍：

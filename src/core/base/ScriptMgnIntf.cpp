@@ -1188,12 +1188,11 @@ extern ttstr TVPGetErrorDialogTitle();
 //---------------------------------------------------------------------------
 void TVPShowScriptException(eTJS &e)
 {
+	// first, before anything the engine does on error can end the process
+	fprintf(stderr, "[script] %ls\n", (const wchar_t*)e.GetMessage().c_str());
+	fflush(stderr);
 	TVPSetSystemEventDisabledState(true);
 	TVPOnError();
-
-	// a host with no dialog still has to say what went wrong: this is the last
-	// place the message exists before the engine terminates
-	fprintf(stderr, "[script] %ls\n", (const wchar_t*)e.GetMessage().c_str());
 
 	if(!TVPSystemUninitCalled)
 	{
@@ -1207,6 +1206,11 @@ void TVPShowScriptException(eTJS &e)
 //---------------------------------------------------------------------------
 void TVPShowScriptException(eTJSScriptError &e)
 {
+	// first, before anything the engine does on error can end the process
+	fprintf(stderr, "[script] %ls\n", (const wchar_t*)e.GetMessage().c_str());
+	if(e.GetTrace().GetLen() != 0)
+		fprintf(stderr, "[script] trace: %ls\n", (const wchar_t*)e.GetTrace().c_str());
+	fflush(stderr);
 	TVPSetSystemEventDisabledState(true);
 	TVPOnError();
 

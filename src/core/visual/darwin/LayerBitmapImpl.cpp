@@ -374,7 +374,7 @@ tTVPBitmap::tTVPBitmap(const tTVPBitmap & r)
 	*BitmapInfo = *r.BitmapInfo;
 
 	// copy Bits
-	if(r.Bits) memcpy(Bits, r.Bits, r.BitmapInfo->GetImageSize() );
+	if(r.Bits) memcpy(Bits, r.Bits, (size_t)PitchBytes * Height);
 	if(r.Palette) {
 		memcpy(Palette, r.Palette, sizeof(tjs_uint)*DEFAULT_PALETTE_COUNT );
 		ActualPalCount = r.ActualPalCount;
@@ -395,13 +395,17 @@ void tTVPBitmap::Allocate(tjs_uint width, tjs_uint height, tjs_uint bpp)
 
 	Width = width;
 	Height = height;
-	PitchBytes = BitmapInfo->GetPitchBytes();
+	// the size is worked out here rather than read back from the header: a
+	// BITMAPINFO with BI_RGB leaves biSizeImage at zero, and a zero-size
+	// allocation makes every later write walk off the buffer
+	PitchBytes = ((width * bpp + 31) / 32) * 4;
 	PitchStep = PitchBytes;
+	const tjs_uint imageSize = PitchBytes * height;
 
 	// allocate bitmap bits
 	try
 	{
-		Bits = tTVPBitmapBitsAlloc::Alloc(BitmapInfo->GetImageSize(), width, height);
+		Bits = tTVPBitmapBitsAlloc::Alloc(imageSize, width, height);
 		if( bpp == 8 ) {
 			Palette = new tjs_uint[DEFAULT_PALETTE_COUNT];
 			ActualPalCount = 0;

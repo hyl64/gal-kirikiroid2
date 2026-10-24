@@ -38,6 +38,20 @@
 #include <string>
 #include <vector>
 #include <unistd.h>
+#include <execinfo.h>
+#include <cstdlib>
+
+// who called exit(): the engine's terminate path leads somewhere we cannot see
+// otherwise, and the answer is in this stack
+static void OnExitTrace()
+{
+	if(getenv("KRKR_TRACE_EXIT") == nullptr)
+		return;
+	void* frames[32];
+	const int n = backtrace(frames, 32);
+	fprintf(stderr, "[exit trace] %d frame(s)\n", n);
+	backtrace_symbols_fd(frames, n, 2);
+}
 
 // the console the script prints through
 class ConsoleOutput : public iTJSConsoleOutput
@@ -118,6 +132,7 @@ static bool SaveComposed(const char* path)
 
 int main(int argc, char** argv)
 {
+	atexit(OnExitTrace);
 	if(argc < 2)
 	{
 		fprintf(stderr, "usage: %s <script.tjs>\n", argv[0]);
