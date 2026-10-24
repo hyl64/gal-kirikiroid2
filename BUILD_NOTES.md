@@ -215,6 +215,35 @@ $ ./build/krkrfont /tmp/font2.bmp 48 "ナルキッソス"
 这一张图说明引擎②的图像、字体、混合三层都是通的——缺的只剩「谁来调度这些层」，
 也就是窗口层与 KAG 运行时。
 
+### 9. 软件纹理 + 软件渲染管理器 + 位图分配 ✅（图层的地基）
+引擎的位图类本身**不存像素**——像素在 `iTVPTexture2D` 里，由渲染管理器创建。
+所以先把这两个部件写出来：
+
+| 部件 | 文件 | 说明 |
+|---|---|---|
+| 软件纹理 | `visual/darwin/Texture2D_Soft.cpp` | `iTVPTexture2D` 的内存实现，引擎像素格式 |
+| 软件渲染管理器 | `visual/darwin/RenderManager_Soft.cpp` | `iTVPRenderManager` 只有 **9 个纯虚**，全部实现；纹理创建、缩放（最近邻）、OperateRect 拷贝 |
+| 软件重采样 | `visual/darwin/ResampleImage_Soft.cpp` | `TVPResampleImage`（上游 gl 版绑 cocos 分配器） |
+| 位图分配 | `visual/darwin/LayerBitmapImpl.cpp` | ctor/dtor/Recreate/SetSize/GetBPP/Assign/Independ… 委托给纹理 |
+
+**验证**（`krkrbitmap`）：
+```
+bitmap: 320x200, 32 bpp, pitch 1280
+point (10,10) = 0x00ff00ff, (11,10) = 0xff282828
+wrote /tmp/bmp.bmp     ← 渐变 + 色块，像素抽样与写入一致
+```
+
+### 关键发现：连「纯色填充」都要走渲染方法
+`iTVPBaseBitmap::Fill` 的实现是：
+```cpp
+static iTVPRenderMethod* method = TVPGetRenderManager()->GetRenderMethod("FillARGB");
+static int paramid = method->EnumParameterID("color");
+```
+也就是说引擎把所有绘制（Fill / FillColor / 拉伸 / 混合）都抽象成
+**`iTVPRenderMethod`（着色器式的对象）**，由渲染管理器按名字提供。软件后端
+必须实现这些方法（内部调 tvpgl 即可），否则 `method` 是空指针。
+**这就是下一个部件**：`iTVPRenderMethod` 的软件实现（FillARGB / Copy / AlphaBlend…）。
+
 ## 窗口层的真实工作量（下一步）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：

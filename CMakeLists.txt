@@ -135,7 +135,12 @@ add_library(krkrvis STATIC
 	${CORE}/visual/CharacterData.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/platform/darwin/darwin_font.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/platform/darwin/darwin_config.cpp
-	${CORE}/visual/darwin/LayerBitmapImpl.cpp)
+	${CORE}/visual/LayerBitmapIntf.cpp
+	${CORE}/visual/darwin/LayerBitmapImpl.cpp
+	${CORE}/visual/darwin/Texture2D_Soft.cpp
+	${CORE}/visual/darwin/RenderManager_Soft.cpp
+	${CORE}/visual/argb.cpp
+	${CORE}/visual/darwin/ResampleImage_Soft.cpp)
 target_include_directories(krkrvis PUBLIC ${KRKR_INCLUDES}
 	${CMAKE_CURRENT_SOURCE_DIR}/platform)
 target_link_libraries(krkrvis PUBLIC krkrbase ${PNG_LIBRARIES})
@@ -143,6 +148,12 @@ target_link_directories(krkrvis PUBLIC ${PNG_LIBRARY_DIRS})
 target_include_directories(krkrvis PUBLIC ${PNG_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
 target_link_libraries(krkrvis PUBLIC ${FREETYPE_LIBRARIES})
 target_link_directories(krkrvis PUBLIC ${FREETYPE_LIBRARY_DIRS})
+
+add_executable(krkrbitmap tools/krkrbitmap.cpp)
+target_link_libraries(krkrbitmap PRIVATE krkrvis ${SDL2_LIBRARIES})
+target_link_directories(krkrbitmap PRIVATE ${SDL2_LIBRARY_DIRS})
+target_include_directories(krkrbitmap PRIVATE ${KRKR_INCLUDES} ${SDL2_INCLUDE_DIRS}
+	${CMAKE_CURRENT_SOURCE_DIR}/platform)
 
 add_executable(krkrscene tools/krkrscene.cpp)
 target_link_libraries(krkrscene PRIVATE krkrvis ${SDL2_LIBRARIES})
