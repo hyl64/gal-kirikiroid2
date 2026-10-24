@@ -40,7 +40,15 @@ public:
 	tjs_error TJS_INTF_METHOD Construct(tjs_int numparams, tTJSVariant** param, iTJSDispatch2* tjs_obj);
 	void TJS_INTF_METHOD Invalidate();
 
-	tTVPDrawDevice* GetDevice() const { return Device; }
+	// the device comes up on first use: the window takes it from the interface
+	// property right after constructing the class, and a host may create the
+	// object without running the constructor body
+	tTVPDrawDevice* GetDevice()
+	{
+		if(Device == nullptr)
+			Device = TVPCreateDrawDeviceDarwin();
+		return Device;
+	}
 };
 
 tTJSNI_DarwinDrawDevice::tTJSNI_DarwinDrawDevice()

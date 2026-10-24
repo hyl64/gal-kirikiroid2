@@ -75,6 +75,10 @@ tTVPNativeBaseBitmap::~tTVPNativeBaseBitmap()
 void tTVPNativeBaseBitmap::Recreate(tjs_uint w, tjs_uint h, tjs_uint bpp)
 {
 	(void)bpp;
+	// the layers start from a zero-sized picture and fill it before their size
+	// is set; a texture has to have at least one pixel for the blitters
+	if(w == 0) w = 1;
+	if(h == 0) h = 1;
 	if(Bitmap != nullptr)
 		Bitmap->Release();
 	// the render manager owns every texture; the software one it hands out is
