@@ -179,11 +179,18 @@ int main(int argc, char** argv)
 			root += cwd;
 		root += "/";
 		TVPAddAutoPath(ttstr(root.c_str()));
+		// KAG's own scripts live in system/ and name each other without the
+		// prefix, so that folder is searchable too
+		TVPAddAutoPath(ttstr((root + "system/").c_str()));
 		TVPSetCurrentDirectory(ttstr(root.c_str()));
 	}
 
 	ConsoleOutput console;
+	// Scripts.execStorage and friends reach the engine through this global; the
+	// application's start-up assigns it, and a tool creates the engine itself
+	extern tTJS* TVPScriptEngine;
 	tTJS* tjs = new tTJS();
+	TVPScriptEngine = tjs;
 	tjs->SetConsoleOutput(&console);
 	iTJSDispatch2* global = tjs->GetGlobal();
 

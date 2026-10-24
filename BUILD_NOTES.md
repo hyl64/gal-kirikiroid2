@@ -597,6 +597,40 @@ Kirikiri 2.32 上、能扫描游戏目录、能建立自动路径表。
 ——那会构造 `KAGMainWindow`（建窗口、建图层、注册大量属性），进程就停在那里。
 这是 KAG 与引擎最重的接触面，也是下一个要啃的具体目标。
 
+### 20b. `Scripts.execStorage` 修好 ✅ → KAG 开始报真实错误
+
+**根因**：`TVPExecuteStorage` 第一句就是 `if(!TVPScriptEngine) TVPThrowInternalError`。
+`TVPScriptEngine` 这个全局**只在应用启动流程里被赋值**（`TVPInitScriptEngine()`），
+而 `krkrrun` 自己 `new tTJS()`，于是永远是空 → 任何 `execStorage` 都返回
+「Internal error」。
+
+修复（`tools/krkrrun.cpp`）：
+
+```cpp
+extern tTJS* TVPScriptEngine;
+tTJS* tjs = new tTJS();
+TVPScriptEngine = tjs;        // ← 工具创建引擎后要登记
+```
+
+（试过直接调 `TVPInitScriptEngine()`，它需要完整启动环境，会段错误；所以用最小挂钩。）
+
+**效果**：`Scripts.execStorage("trivial.tjs")` → `trivial ran` ✓
+
+**KAG3 初始化随后前进了一大步**，从「静默 Internal error」变成**带消息的真实 KAG 错误**：
+
+```
+OS : macOS (macOS)
+KAG : 3.32 stable rev. 2
+Kirikiri : 2.32.0.0
+initialize failed: Config.tjs が見つかりません。    ← "Config.tjs not found"
+(info) Total 50 file(s) found, 43 file(s) activated.
+```
+
+**下一步**：KAG 的脚本用**相对 `system/` 的名字**互相引用。已把 `system/` 加进
+auto path，但仍然找不到——说明 `TVPSearchPlacedPath` 的查找时机或路径表构建顺序有问题
+（KAG 在 Initialize 早期就构建路径表，之后加的 auto path 可能不生效）。
+下轮查这个顺序。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
