@@ -431,6 +431,33 @@ wrote /tmp/text2.bmp
 **仍由桌面提供的**（真正平台专属，不可替代）：SDL 窗口与送显、文件存储媒体、
 字体钩子、剪贴板、软件渲染管理器的纹理、`LayerBitmapImpl`/`TextDraw` 的平台实现。
 
+### 18. 图层首次填充崩溃：定位进展（未解）
+
+**现象**：脚本 `new Window()` 成功，紧接着 `new Layer(...)` 在图层构造函数里崩：
+
+```
+tTVPRenderMethod_FillARGB::DoRender   ← RenderManager.cpp:1038
+  ← tTVPSoftwareRenderManager::OperateRect
+    ← iTVPBaseBitmap::Fill
+      ← tTJSNI_BaseLayer::tTJSNI_BaseLayer()
+```
+
+**已知**：崩在 `RenderManager.cpp:1038`：
+```cpp
+tjs_uint8 *dest = (tjs_uint8*)_tar->GetScanLineForWrite(rect.top) + rect.left * (is32bpp ? 4 : 1);
+```
+这条语句在 `GetScanLineForWrite` 返回空指针时会崩（空指针 + 偏移后立即写入）。
+
+**已排查**：
+- 加了 `KRKR_DEBUG_BITMAP=1` 的探针到我们位图层的 `GetScanLineForWrite`/`GetTextureForRender`
+  → **没有输出**，说明崩溃时的目标纹理不是我们的位图对象，而是引擎自己创建的软件纹理
+- 已修两处相关问题（都保留）：位图请求**未压缩**纹理（`RENDER_CREATE_TEXTURE_FLAG_NO_COMPRESS`）；
+  `SetSize` 也把 0 尺寸钳到 1（之前只钳了 `Recreate`）
+
+**下一步该查**：`tTVPSoftwareTexture2D::GetScanLineForWrite` 的实现——什么情况下返回空？
+（压缩变体 `tTVPSoftwareTexture2D_compress` 的写法需要先解压，若它被创建出来就会走那条路径；
+另一个方向是 `rect.top` 超出了纹理高度，即某处的尺寸约定不一致。）
+
 ## 窗口层的真实工作量（下一步，已勘察清楚）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：

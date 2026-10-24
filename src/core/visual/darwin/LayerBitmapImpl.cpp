@@ -83,7 +83,8 @@ void tTVPNativeBaseBitmap::Recreate(tjs_uint w, tjs_uint h, tjs_uint bpp)
 		Bitmap->Release();
 	// the render manager owns every texture; the software one it hands out is
 	// the engine's own (visual/RenderManager.cpp)
-	Bitmap = TVPGetRenderManager()->CreateTexture2D(nullptr, 0, w, h, TVPTextureFormat::RGBA);
+	Bitmap = TVPGetRenderManager()->CreateTexture2D(nullptr, 0, w, h, TVPTextureFormat::RGBA,
+		RENDER_CREATE_TEXTURE_FLAG_NO_COMPRESS);
 }
 
 void tTVPNativeBaseBitmap::Recreate()
@@ -95,10 +96,15 @@ void tTVPNativeBaseBitmap::Recreate()
 
 void tTVPNativeBaseBitmap::SetSize(tjs_uint w, tjs_uint h, bool keepimage)
 {
+	// a texture with no pixels has no scan lines to hand out, and the engine
+	// fills bitmaps before their size is set
+	if(w == 0) w = 1;
+	if(h == 0) h = 1;
 	if(Bitmap != nullptr && Bitmap->GetInternalWidth() == w && Bitmap->GetInternalHeight() == h)
 		return;
 	iTVPTexture2D* old = keepimage ? Bitmap : nullptr;
-	iTVPTexture2D* fresh = TVPGetRenderManager()->CreateTexture2D(nullptr, 0, w, h, TVPTextureFormat::RGBA);
+	iTVPTexture2D* fresh = TVPGetRenderManager()->CreateTexture2D(nullptr, 0, w, h, TVPTextureFormat::RGBA,
+		RENDER_CREATE_TEXTURE_FLAG_NO_COMPRESS);
 	if(old != nullptr && fresh != nullptr)
 	{
 		// keep the overlapping corner, as the engine expects of SetSize
@@ -195,7 +201,9 @@ void tTVPNativeBaseBitmap::IndependNoCopy()
 iTVPTexture2D* tTVPNativeBaseBitmap::GetTextureForRender(bool isBlendTarget, const tTVPRect* rc)
 {
 	(void)isBlendTarget;
-	(void)rc;
+	if(Bitmap == nullptr && getenv("KRKR_DEBUG_BITMAP"))
+		fprintf(stderr, "[bitmap] GetTextureForRender with no texture%s\n",
+			rc != nullptr ? " (rect given)" : "");
 	return Bitmap;
 }
 
@@ -220,7 +228,17 @@ const void* tTVPNativeBaseBitmap::GetScanLine(tjs_uint l) const
 
 void* tTVPNativeBaseBitmap::GetScanLineForWrite(tjs_uint l)
 {
-	return Bitmap != nullptr ? Bitmap->GetScanLineForWrite(l) : nullptr;
+	if(Bitmap == nullptr)
+	{
+		if(getenv("KRKR_DEBUG_BITMAP"))
+			fprintf(stderr, "[bitmap] GetScanLineForWrite(%u) with no texture\n", (unsigned)l);
+		return nullptr;
+	}
+	void* line = Bitmap->GetScanLineForWrite(l);
+	if(line == nullptr && getenv("KRKR_DEBUG_BITMAP"))
+		fprintf(stderr, "[bitmap] GetScanLineForWrite(%u) past %ux%u\n", (unsigned)l,
+			(unsigned)Bitmap->GetInternalWidth(), (unsigned)Bitmap->GetInternalHeight());
+	return line;
 }
 
 tjs_int tTVPNativeBaseBitmap::GetPitchBytes() const
