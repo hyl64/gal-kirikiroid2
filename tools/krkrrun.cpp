@@ -234,6 +234,36 @@ int main(int argc, char** argv)
 	{
 		ttstr name = ttstr(argv[1]);
 		tjs->ExecScript(&script[0], nullptr, nullptr, name.c_str());
+
+		// an optional run loop: a framework that waits for timers and events needs
+		// one, or it never gets past its first wait
+		if(const char* seconds = getenv("KRKR_LOOP_SECONDS"))
+		{
+			extern void TVPDarwinTickTimers();
+			extern iTVPDrawDevice* TVPGetLastDrawDeviceDarwin();
+			const double limit = atof(seconds) * 1000.0;
+			const Uint64 start = SDL_GetTicks64();
+			while((double)(SDL_GetTicks64() - start) < limit)
+			{
+				TVPDarwinTickTimers();
+				// the framework's own events (AsyncTrigger and friends) are queued
+				// and dispatched here
+				extern void TVPInvokeEvents();
+				TVPInvokeEvents();
+				if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
+				{
+					device->Update();
+					device->Show();
+				}
+				SDL_Event e;
+				while(SDL_PollEvent(&e))
+				{
+					if(e.type == SDL_QUIT)
+						break;
+				}
+				SDL_Delay(16);
+			}
+		}
 		// an optional frame, taken after the script has run
 		if(argc >= 4 && strcmp(argv[2], "--screenshot") == 0)
 		{

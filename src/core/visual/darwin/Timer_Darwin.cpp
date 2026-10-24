@@ -12,6 +12,28 @@
  */
 
 #include "tjsCommHead.h"
+
+#include <chrono>
+#include <vector>
+
+// the timers that are running, for the host's loop to fire
+namespace
+{
+	struct RunningTimer
+	{
+		bool* Enabled = nullptr;
+		tjs_int* Interval = nullptr;
+		tTJSVariant* Handler = nullptr;
+		std::chrono::steady_clock::time_point Next;
+	};
+	std::vector<RunningTimer> gRunning;
+}
+
+// Called from the host's loop: fires every timer that is due.  A timer with no
+// handler just keeps its schedule, which is what "enabled" means for a script that
+// only reads it.
+void TVPDarwinTickTimers();
+
 #include "tjsNative.h"
 #include "tjsVariant.h"
 
@@ -28,6 +50,12 @@ namespace
 
 		~TimerInstance() override
 		{
+			for(size_t i = 0; i < gRunning.size(); i++)
+				if(gRunning[i].Handler == Handler)
+				{
+					gRunning.erase(gRunning.begin() + i);
+					break;
+				}
 			delete Handler;
 		}
 
@@ -35,6 +63,14 @@ namespace
 			iTJSDispatch2* tjs_obj) override
 		{
 			(void)tjs_obj;
+			{
+				RunningTimer entry;
+				entry.Enabled = &Enabled;
+				entry.Interval = &Interval;
+				entry.Handler = Handler;
+				entry.Next = std::chrono::steady_clock::now() + std::chrono::milliseconds(Interval);
+				gRunning.push_back(entry);
+			}
 			// Timer(owner, handler) - the second argument is the event handler
 			if(numparams >= 2 && param[1]->Type() != tvtVoid)
 			{
@@ -164,6 +200,30 @@ tTJSNC_Timer_Darwin::tTJSNC_Timer_Darwin()
 iTJSNativeInstance* tTJSNC_Timer_Darwin::CreateNativeInstance()
 {
 	return new TimerInstance();
+}
+
+// ---------------------------------------------------------------------------
+// firing
+// ---------------------------------------------------------------------------
+void TVPDarwinTickTimers()
+{
+	using clock = std::chrono::steady_clock;
+	for(auto& t : gRunning)
+	{
+		if(t.Enabled == nullptr || !*t.Enabled)
+			continue;
+		const auto now = clock::now();
+		if(now < t.Next)
+			continue;
+		const int interval = t.Interval != nullptr && *t.Interval > 0 ? *t.Interval : 1000;
+		t.Next = now + std::chrono::milliseconds(interval);
+		if(t.Handler != nullptr && t.Handler->Type() == tvtObject)
+		{
+			tTJSVariantClosure clo = t.Handler->AsObjectClosureNoAddRef();
+			tTJSVariant result;
+			clo.FuncCall(0, nullptr, nullptr, &result, 0, nullptr, nullptr);
+		}
+	}
 }
 
 tTJSNativeClass* TVPCreateNativeClass_Timer()

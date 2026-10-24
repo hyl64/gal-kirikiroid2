@@ -902,6 +902,22 @@ wrote /tmp/kag_frame.bmp (640x480)     ← 无错误退出
 下一步：给 `krkrrun` 加一个**主循环**（泵事件 N 秒 + 每帧 `update()`），
 让 KAG 有时间把「こんにちは。」画出来。
 
+### 21c. 加了主循环、定时器触发、事件派发——KAG 仍未推进到绘制
+
+本轮给基础设施补了三样：
+1. **`Timer` 真的会触发**：`Timer_Darwin.cpp` 里加了运行中的定时器表 +
+   `TVPDarwinTickTimers()`，主循环按 `interval` 到点就调 `onTimer` 处理器。
+2. **`krkrrun` 有主循环**：`KRKR_LOOP_SECONDS=4` 时循环 4 秒（每帧 16ms）。
+3. **每帧调 `TVPInvokeEvents()`**：让引擎自己的事件队列（`AsyncTrigger` 等）得以派发。
+
+**状态**：KAG 依然停在「処理を開始します」，帧仍空白（一种颜色）。说明它的
+场景推进不是靠我们这条定时器路径——很可能 KAG 的 `wait` 用的是
+`System.getTickCount` 轮询 + 自己的事件循环，而那个循环需要 `WaitForVBlank` /
+连续的 `onTimer` 事件链。
+
+**下一步**：查 KAG 的 `wait`/`waitCommand` 是怎么等的（`MainWindow.tjs` 或
+`KAGParser`），对照它期待的驱动方式，再补对应的平台钩子。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
