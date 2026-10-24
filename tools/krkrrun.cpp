@@ -232,6 +232,13 @@ int main(int argc, char** argv)
 	int status = 0;
 	try
 	{
+		// KiriKiri's own start-up sets these before a game's first script runs;
+		// KAG's scripts test kirikiriz to pick their code paths
+		const tjs_char prelude[] =
+			TJS_W("global.kirikiriz = true;")
+			TJS_W("global.kirikiri2 = true;");
+		tjs->ExecScript(prelude, nullptr, nullptr, TJS_W("(prelude)"));
+
 		ttstr name = ttstr(argv[1]);
 		tjs->ExecScript(&script[0], nullptr, nullptr, name.c_str());
 

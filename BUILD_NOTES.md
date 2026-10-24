@@ -956,6 +956,26 @@ wrote /tmp/kag_final2.bmp (640x480, presented frame)     帧内 231 种颜色
 
 **脚本 → 框架 → 消息层 → 图层树 → 合成 → 设备 → 屏幕**，全链路在 arm64 原生构建上跑通。
 
+### 23. 管理器集成完成 ✅（`gal verify kag3-sample` → 可以运行）
+
+**最后一道差异是测试数据的布局，不是启动器**：KAG 的脚本用**不带目录的名字**互相引用
+（`Config.tjs`），而这个后端的存储层只有在**游戏根目录**里才能解析裸名字，所以
+`testdata/kag3-sample` 需要把 `system/*.tjs` 平铺到根目录（工作副本里就是这么做的）。
+
+平铺后：
+
+```bash
+cd ~/Documents/gal-engines/gal
+KRKR_LOOP_SECONDS=4 SDL_VIDEODRIVER=dummy ./gal play kag3-sample
+# → KAGMainWindow のコンストラクタで 10ms かかりました
+# → first.ks : こんにちは。
+
+SDL_VIDEODRIVER=dummy ./gal verify kag3-sample
+# → 结论: 可以运行
+```
+
+**引擎② 的验收闭环完成**：管理器建库 → 选引擎 → 启动 → 判定通过。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
