@@ -73,7 +73,8 @@ namespace
 			}
 			// Timer(handler, mode) - the handler is the *first* argument and the
 			// second is a mode string ('' means call the function directly)
-			if(numparams >= 1 && param[0]->Type() == tvtObject)
+			// any callable: a function object, or a string naming one
+			if(numparams >= 1 && param[0]->Type() != tvtVoid)
 				Handler = new tTJSVariant(*param[0]);
 			return TJS_S_OK;
 		}
@@ -229,7 +230,25 @@ void TVPDarwinTickTimers()
 		{
 			tTJSVariantClosure clo = t.Handler->AsObjectClosureNoAddRef();
 			tTJSVariant result;
-			clo.FuncCall(0, nullptr, nullptr, &result, 0, nullptr, nullptr);
+			try
+			{
+				const tjs_error hr = clo.FuncCall(0, nullptr, nullptr, &result, 0, nullptr, nullptr);
+				if(getenv("KRKR_DEBUG_TIMER"))
+				{
+					fprintf(stderr, "[timer] handler returned %d\n", (int)hr);
+					fflush(stderr);
+				}
+			}
+			catch(const eTJS& e)
+			{
+				fprintf(stderr, "[timer] handler threw: %ls\n", (const wchar_t*)e.GetMessage().c_str());
+				fflush(stderr);
+			}
+			catch(...)
+			{
+				fprintf(stderr, "[timer] handler threw something else\n");
+				fflush(stderr);
+			}
 		}
 	}
 }
