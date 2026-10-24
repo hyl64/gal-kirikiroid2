@@ -488,6 +488,31 @@ win.update();                            // 合成
 **这轮的教训比 bug 值钱**：诊断输出必须 `fflush`（stderr 接管道时全缓冲，`_exit` 会丢光）；
 以及**先怀疑自己的测试脚本**，再怀疑引擎。
 
+### 18c. 子层不合成：`win.update()` 根本没到设备（本轮定位）
+
+给 `tTVPDrawDevice::Update()` 与我们的 `Show()` 加了 `KRKR_DEBUG_DEV` 打印后运行子图层脚本：
+
+```
+[dev] 行数：0          ← Update 和 Show 一次都没被调用
+```
+
+对照 `tTJSNI_BaseWindow::UpdateContent()`（WindowIntf.cpp:632）：
+
+```cpp
+if( DrawDevice ) {
+    DrawDevice->Update();
+    if( !WaitVSync ) DrawDevice->Show();
+    EndUpdate();
+}
+```
+
+**`DrawDevice` 是空的**——所以整个更新/合成/上屏链路从来没跑过。之前主图层的截图能出内容，
+是因为 `krkrrun --screenshot` 直接读主图层位图，绕过了设备。
+
+**下一步**：查 `tTJSNI_BaseWindow::SetDrawDeviceObject` 里从 "interface" 属性取回设备指针
+那一段——`DrawDevice` 为空说明那次 `PropGet("interface")` 的结果没有被正确解释，
+或者窗口构造时根本没有调用到 `SetDrawDeviceObject`。
+
 ### 18b-old. 排查记录（保留）
 
 **先纠正一个测量错误**：之前记「静默退出 exit 0」是错的——那是 `cmd | head` 的退出码。

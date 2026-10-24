@@ -106,6 +106,7 @@ void tTVPDrawDevice_Darwin::EnsureWindow(int w, int h)
 // the compositor's output, onto the display
 void TJS_INTF_METHOD tTVPDrawDevice_Darwin::Show()
 {
+	if(getenv("KRKR_DEBUG_DEV")) { fprintf(stderr, "[dev] Show\n"); fflush(stderr); }
 	tTJSNI_BaseLayer* primary = GetPrimaryLayer();
 	if(primary == nullptr)
 		return;

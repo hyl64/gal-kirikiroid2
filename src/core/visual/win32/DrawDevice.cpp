@@ -605,6 +605,7 @@ void TJS_INTF_METHOD tTVPDrawDevice::RequestInvalidation(const tTVPRect & rect)
 //---------------------------------------------------------------------------
 void TJS_INTF_METHOD tTVPDrawDevice::Update()
 {
+	if(getenv("KRKR_DEBUG_DEV")) { fprintf(stderr, "[dev] Update\n"); fflush(stderr); }
 	// すべての layer manager の UpdateToDrawDevice を呼ぶ
 	for(std::vector<iTVPLayerManager *>::iterator i = Managers.begin(); i != Managers.end(); i++)
 	{
