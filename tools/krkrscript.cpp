@@ -12,6 +12,7 @@
 
 #include "darwin_platform.h"
 
+#include "SystemIntf.h"
 #include "tjs.h"
 #include "tjsString.h"
 #include "tjsError.h"
@@ -87,7 +88,7 @@ int main(int argc, char** argv)
 
 	// System is this host's (darwin_system.cpp); Storages is the engine's own
 	// (base/StorageIntf.cpp), which reaches the file media and the archives
-	RegisterClass(global, TJS_W("System"), KrkrCreateSystemClass());
+	RegisterClass(global, TJS_W("System"), TVPCreateNativeClass_System());
 	RegisterClass(global, TJS_W("Storages"), TVPCreateNativeClass_Storages());
 
 	// The engine adds its own folder to the search path at start-up; a host

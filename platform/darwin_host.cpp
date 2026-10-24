@@ -405,24 +405,7 @@ void TVPAddAtExitHandler(tjs_int pri, void (*handler)())
 	gExitHandlers.push_back({pri, handler});
 }
 
-// The application object the engine's logging reaches for; a tool has none.
-tTVPApplication* Application = nullptr;
-
-// The engine's console: the messages the application prints for the user go
-// to the terminal when there is no window to draw them in.
-void tTVPApplication::PrintConsole(const ttstr& mes, bool important)
-{
-	tTJSNarrowStringHolder narrow(mes.c_str());
-	fprintf(important ? stderr : stdout, "%s\n", (const char*)narrow);
-	fflush(important ? stderr : stdout);
-}
-
-// the compact event hooks belong to the memory manager, which the archive
-// layer never reaches
-void TVPAddCompactEventHook(tTVPCompactEventCallbackIntf* cb)
-{
-	(void)cb;
-}
+// the engine's own application object lives in environ/Application.cpp
 
 // ---------------------------------------------------------------------------
 // idle hooks
@@ -438,21 +421,3 @@ void TVPAddCompactEventHook(tTVPCompactEventCallbackIntf* cb)
 #include <vector>
 
 static std::vector<tTVPContinuousEventCallbackIntf*> gContinuousHooks;
-
-void TVPAddContinuousEventHook(tTVPContinuousEventCallbackIntf* cb)
-{
-	if(cb != nullptr)
-		gContinuousHooks.push_back(cb);
-}
-
-void TVPRemoveContinuousEventHook(tTVPContinuousEventCallbackIntf* cb)
-{
-	for(size_t i = 0; i < gContinuousHooks.size(); i++)
-	{
-		if(gContinuousHooks[i] == cb)
-		{
-			gContinuousHooks.erase(gContinuousHooks.begin() + (long)i);
-			return;
-		}
-	}
-}

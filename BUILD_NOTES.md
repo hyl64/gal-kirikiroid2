@@ -407,6 +407,30 @@ wrote /tmp/text2.bmp
 本轮为保证仓库绿色，构建配置回退到已验证状态（10 个工具全绿），清理工作留给下一轮
 一次做完——那是一次性的删除+接线，比继续加桩更有价值。
 
+### 17. 合并成单一引擎库，接上真实应用层 ✅（阶段性节点）
+上一轮发现「25 个 duplicate symbol 全是我的桩」，这一轮把这件事做完了：
+
+1. **两个静态库合并成一个**（`krkr`）——`krkrbase` 和 `krkrvis` 本来就互相引用
+   （脚本管理器注册视觉类、图层抛脚本异常），分成两个库只会造成符号在两库间反复
+   跳成「既重复又缺失」。
+2. **删掉冲突的桩**：`Application` 全局、`PrintConsole`、`TVPAdd/RemoveContinuousEventHook`、
+   `TVPAddCompactEventHook`、`TVPFireOnApplicationActivateEvent`、`TVPGetMessageByLocale`、
+   `TVPShowSimpleMessageBox`、`TVPInitWindowOptions`、`TVPClearGraphicCache`、
+   `ColorToRGB`、`ExePath`、`ExtractFileDir`、`TVPGetCursor`、`TVPInvokeEvents`、
+   `TVPEventReceived`、`TVPGetWindowCount/ListAt`、`TVPDoSaveSystemVariables`、
+   `tTJSNI_BaseWindow::UpdateContent` …… 全部由引擎的真实实现接管。
+3. **删掉我那个 `System` 替身类**（`darwin_system.cpp`）——引擎自带 `tTJSNC_System`，
+   工具改为注册 `TVPCreateNativeClass_System()`。
+4. 现在库里有：真实的事件队列（`EventIntf`+`NativeEventQueue`）、真实应用层
+   （`Application.cpp`）、真实图层系统（`LayerIntf`+`LayerManager`+`WindowIntf`）、
+   真实绘制设备（`DrawDevice`+`BasicDrawDevice`）、真实脚本管理器（`ScriptMgnIntf`）。
+
+**10 个工具全部构建通过并回归正常**：`krkrblit` 全过、`krkrfont` 渲染、
+`krkrpresent` 逐像素 0 差异、`krkrtext` 正常绘制。
+
+**仍由桌面提供的**（真正平台专属，不可替代）：SDL 窗口与送显、文件存储媒体、
+字体钩子、剪贴板、软件渲染管理器的纹理、`LayerBitmapImpl`/`TextDraw` 的平台实现。
+
 ## 窗口层的真实工作量（下一步，已勘察清楚）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：

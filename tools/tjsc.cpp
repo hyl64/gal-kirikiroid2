@@ -9,6 +9,7 @@
 
 #include "darwin_platform.h"
 
+#include "SystemIntf.h"
 #include "tjs.h"
 #include "tjsString.h"
 #include "tjsError.h"
@@ -102,7 +103,7 @@ int main(int argc, char** argv)
 	// globals lack it because the application layer owns it upstream
 	{
 		iTJSDispatch2* global = tjs->GetGlobal();
-		iTJSDispatch2* sys = KrkrCreateSystemClass();
+		iTJSDispatch2* sys = TVPCreateNativeClass_System();
 		tTJSVariant val(sys, NULL);
 		sys->Release();
 		global->PropSet(TJS_MEMBERENSURE, TJS_W("System"), NULL, &val, global);

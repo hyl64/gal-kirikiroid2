@@ -31,15 +31,10 @@ extern FontRasterizer* GetCurrentRasterizer();
 extern tjs_int TVPGlobalFontStateMagic; // bumped when the rasterizer changes
 extern tTVPPrerenderedFont* TVPGetPrerenderedMappedFont(const tTVPFont& font);
 extern void TVPUnmapPrerenderedFont(const tTVPFont& font);
+extern void TVPInitWindowOptions(); // the window options, from the window layer
 extern void TVPGetAllFontList(std::vector<ttstr>& list);
 extern void TVPMapPrerenderedFont(const tTVPFont& font, const ttstr& storage);
 extern void TVPUnmapPrerenderedFont();
-
-// the window options the engine keeps (bitmap alignment and the like) are
-// initialised on first use; the desktop defaults need nothing set up
-void TVPInitWindowOptions()
-{
-}
 
 
 // ---------------------------------------------------------------------------
@@ -232,13 +227,6 @@ tjs_int tTVPNativeBaseBitmap::GetPitchBytes() const
 // ---------------------------------------------------------------------------
 // the graphics cache the decoders clear after loading a picture
 // ---------------------------------------------------------------------------
-
-// The Windows back end keeps decoded header information per storage name to
-// avoid asking the disk twice.  This slice of the port has no such cache yet,
-// so there is nothing to clear; the call exists because the decoders make it.
-void TVPClearGraphicCache(void)
-{
-}
 
 // ---------------------------------------------------------------------------
 // tTVPBitmap : the pixel buffer

@@ -128,22 +128,7 @@ bool TVPAcceptSaveAsJXR(void*, const ttstr&, iTJSDispatch2**)
 	return false;
 }
 
-// ---------------------------------------------------------------------------
-// the event loop
-// ---------------------------------------------------------------------------
 
-// The engine posts events to scripts and drains them with TVPInvokeEvents; its
-// own event thread is the platform's (base/win32/EventImpl.cpp on Windows).  A
-// host that renders a frame and leaves has nothing queued, so this runs nothing
-// and the queue stays empty - the window layer will drain it once there is a
-// message loop.
-void TVPInvokeEvents()
-{
-}
-
-void TVPEventReceived()
-{
-}
 
 bool TVPAcceptSaveAsTLG(void*, const ttstr&, iTJSDispatch2**)
 {
@@ -177,10 +162,6 @@ void TVPTerminateSync(int code)
 	(void)code;
 }
 
-tjs_int TVPGetWindowCount()
-{
-	return 0;
-}
 
 void TVPDumpHWException()
 {
@@ -215,14 +196,7 @@ void TVPClipboardSetText(const ttstr& text)
 bool TVPSystemUninitCalled = false;
 bool TVPTerminateOnNoWindowStartup = false;
 
-// continuous events are the engine's idle callbacks; a tool has no idle loop
-void TVPBeginContinuousEvent()
-{
-}
 
-void TVPEndContinuousEvent()
-{
-}
 
 // the clipboard holds text here, so whatever the engine asks for is there
 bool TVPClipboardHasFormat(tTVPClipboardFormat format)
@@ -231,37 +205,13 @@ bool TVPClipboardHasFormat(tTVPClipboardFormat format)
 	return true;
 }
 
-ttstr TVPGetErrorDialogTitle()
-{
-	return ttstr("Error");
-}
 
-// saving the per-game settings writes a file the desktop host does not keep yet
-void TVPDoSaveSystemVariables()
-{
-}
 
-// ---------------------------------------------------------------------------
-// colour and cursor
-// ---------------------------------------------------------------------------
-
-// 0xRRGGBB into the 0x00BBGGRR the Windows GDI colour values use
-unsigned long ColorToRGB(unsigned int col)
-{
-	return ((col & 0xff) << 16) | (col & 0xff00) | ((col >> 16) & 0xff);
-}
 
 // games name a cursor; a back end without a cursor theme keeps the system one,
 // so the name is recorded and no shape is set
 static tjs_int gCursorShape = 0;
 
-tjs_int TVPGetCursor(const ttstr& name)
-{
-	(void)name;
-	tjs_int shape = gCursorShape;
-	gCursorShape = (gCursorShape + 1) & 0x0f;
-	return shape;
-}
 
 // ---------------------------------------------------------------------------
 // what the Windows system layer would supply
@@ -294,17 +244,7 @@ void TVPShowPopMenu(tTJSNI_MenuItem* item)
 	(void)item; // no popup menus without a window to pop them up in
 }
 
-tTJSNI_Window* TVPGetWindowListAt(tjs_int idx)
-{
-	(void)idx;
-	return nullptr;
-}
 
-std::string ExtractFileDir(const std::string& FileName)
-{
-	size_t pos = FileName.find_last_of("/\\");
-	return pos == std::string::npos ? std::string(".") : FileName.substr(0, pos);
-}
 
 // list a folder's entries, the way the engine's own storage layer does: the
 // callback gets the name and whether it is a folder
@@ -416,18 +356,10 @@ bool TVPGetKeyMouseAsyncState(tjs_uint keycode, bool getcurrent)
 	return false; // no input is being polled outside the window's events
 }
 
-void TVPClearAllWindowInputEvents()
-{
-}
 
 void TVPCauseAtInstallExtensionClass(iTJSDispatch2* global)
 {
 	(void)global;
-}
-
-void TVPFireOnApplicationActivateEvent(bool activate_or_deactivate)
-{
-	(void)activate_or_deactivate;
 }
 
 tjs_int TVPGetCommandLineArgumentGeneration()
@@ -444,13 +376,6 @@ tjs_int TVPGetCommandLineArgumentGeneration()
 #include "WaveIntf.h"
 #include "tvpgl.h"
 
-ttstr ExePath()
-{
-	char cwd[1024];
-	if(getcwd(cwd, sizeof cwd) == nullptr)
-		return ttstr(".");
-	return ttstr(cwd);
-}
 
 // there is one display; its usable area is the SDL desktop mode's size
 static void DesktopSize(int& w, int& h)
@@ -529,18 +454,6 @@ tTJSNativeClass* TVPCreateNativeClass_BitmapLayerTreeOwner()
 	return nullptr;
 }
 
-// ---------------------------------------------------------------------------
-// the script-side window and menu objects
-// ---------------------------------------------------------------------------
-
-// tTJSNC_Window and tTJSNC_MenuItem are defined in the VCL application layer
-// (environ/win32/WindowFormUnit.cpp and friends), which the desktop does not
-// build; their factories answer nothing until this back end has window objects
-// of its own.  A game that asks for one gets nothing rather than a crash.
-tTJSNativeClass* TVPCreateNativeClass_Window()
-{
-	return nullptr;
-}
 
 tTJSNativeClass* TVPCreateNativeClass_MenuItem()
 {
@@ -622,10 +535,6 @@ void TVPResetVolumeToAllSoundBuffer()
 {
 }
 
-// the script-side window's content update; there is no window object yet
-void tTJSNI_BaseWindow::UpdateContent()
-{
-}
 
 // the system control's idle pass: no events are queued here
 void tTVPSystemControl::InvokeEvents()

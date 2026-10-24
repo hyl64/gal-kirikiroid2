@@ -13,6 +13,7 @@
 // wants.
 
 #include "Platform.h"
+#include "tjsConfig.h" // tTJSNarrowStringHolder
 #include "tjsCommHead.h"
 
 #include <cstdio>
@@ -94,44 +95,7 @@ tjs_int TVPGetSelfUsedMemory()
 // message boxes
 // ---------------------------------------------------------------------------
 
-// No window exists yet in a terminal run, so the text goes to stderr and the
-// first button (the default) is reported as pressed.
-extern "C" int TVPShowSimpleMessageBox(const char* text, const char* caption, unsigned int nButton, const char** btnText)
-{
-	if(caption != nullptr && *caption)
-		fprintf(stderr, "[%s] ", caption);
-	if(text != nullptr)
-		fprintf(stderr, "%s\n", text);
-	(void)nButton;
-	(void)btnText;
-	return 0;
-}
 
-// the ttstr overloads: the text is UTF-16, so it narrows through the engine's
-// own converter before it reaches the terminal
-int TVPShowSimpleMessageBox(const ttstr& text, const ttstr& caption, const std::vector<ttstr>& vecButtons)
-{
-	tTJSNarrowStringHolder narrowText(text.c_str());
-	tTJSNarrowStringHolder narrowCaption(caption.c_str());
-	if(!caption.IsEmpty())
-		fprintf(stderr, "[%s] ", (const char*)narrowCaption);
-	fprintf(stderr, "%s\n", (const char*)narrowText);
-	// no dialog: the first button is the one a terminal takes
-	(void)vecButtons;
-	return 0;
-}
-
-int TVPShowSimpleMessageBox(const ttstr& text, const ttstr& caption)
-{
-	std::vector<ttstr> buttons;
-	return TVPShowSimpleMessageBox(text, caption, buttons);
-}
-
-int TVPShowSimpleMessageBoxYesNo(const ttstr& text, const ttstr& caption)
-{
-	// no dialog to answer in: "no" keeps the caller on the safe path
-	return TVPShowSimpleMessageBox(text, caption);
-}
 
 int TVPShowSimpleInputBox(ttstr& text, const ttstr& caption, const ttstr& prompt, const std::vector<ttstr>& vecButtons)
 {
@@ -175,10 +139,6 @@ void TVPExitApplication(int code)
 {
 	(void)code;
 	exit(code);
-}
-
-void TVPCheckMemory()
-{
 }
 
 // the per-user preference file of the engine
@@ -318,4 +278,32 @@ std::string TVPGetCurrentLanguage()
 	if(lang != nullptr && strncmp(lang, "zh", 2) == 0)
 		return "zh_CN";
 	return "en_us";
+}
+
+// the C-style message box the engine's boot path uses; with no window it goes to
+// stderr and reports the first button, which is what an unattended run wants
+extern "C" int TVPShowSimpleMessageBox(const char* text, const char* caption, unsigned int nButton,
+	const char** btnText)
+{
+	if(caption != nullptr && *caption)
+		fprintf(stderr, "[%s] ", caption);
+	if(text != nullptr)
+		fprintf(stderr, "%s\n", text);
+	(void)nButton;
+	(void)btnText;
+	return 0;
+}
+
+// the three-button overload the engine's error paths use; with no window it goes
+// to stderr and reports the first button
+int TVPShowSimpleMessageBox(const ttstr& text, const ttstr& caption,
+	const std::vector<ttstr>& vecButtons)
+{
+	tTJSNarrowStringHolder narrowText(text.c_str());
+	tTJSNarrowStringHolder narrowCaption(caption.c_str());
+	if(!caption.IsEmpty())
+		fprintf(stderr, "[%s] ", (const char*)narrowCaption);
+	fprintf(stderr, "%s\n", (const char*)narrowText);
+	(void)vecButtons;
+	return 0;
 }

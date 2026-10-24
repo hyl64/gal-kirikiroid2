@@ -82,19 +82,3 @@ namespace TJS
 // ---------------------------------------------------------------------------
 // messages
 // ---------------------------------------------------------------------------
-
-// The locale XML of the shipped games is loaded by the cocos2d application
-// layer; without it the engine's compiled-in catalogue answers, and a key
-// with no entry reads as itself (which is what a missing translation means).
-ttstr TVPGetMessageByLocale(const std::string& key)
-{
-	tjs_char wkey[256];
-	size_t n = key.size() < 255 ? key.size() : 255;
-	for(size_t i = 0; i < n; i++)
-		wkey[i] = (tjs_char)(unsigned char)key[i];
-	wkey[n] = 0;
-	ttstr msg = TJSGetMessageMapMessage(wkey);
-	if(msg.IsEmpty())
-		return ttstr(key.c_str());
-	return msg;
-}
