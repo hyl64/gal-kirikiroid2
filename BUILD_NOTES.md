@@ -280,7 +280,19 @@ static int paramid = method->EnumParameterID("color");
 必须实现这些方法（内部调 tvpgl 即可），否则 `method` 是空指针。
 **这就是下一个部件**：`iTVPRenderMethod` 的软件实现（FillARGB / Copy / AlphaBlend…）。
 
-## 窗口层的真实工作量（下一步）
+### 11. 引擎纹理上真屏幕 → `krkrpresent` ✅
+引擎画进 `iTVPTexture2D`，后端负责把其中一张送显：Windows 是 GDI BitBlt，
+Android 是 GL 纹理上传。桌面后端这一跳是 **SDL 纹理 + renderer**。
+
+```bash
+$ ./build/krkrpresent /tmp/scene.xp3 bg.png 60 /tmp/present2.bmp
+texture: 1920x1080 from file:///tmp/scene.xp3>bg.png
+presented 60 frame(s) on 'cocoa'      ← 真的开了一个 Cocoa 窗口
+```
+
+**验证**：截图与源图逐像素比对 **0/28215 差异**（用 513×55 带 alpha 的图测）。
+
+## 窗口层的真实工作量（下一步，已勘察清楚）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：
 
@@ -291,8 +303,16 @@ static int paramid = method->EnumParameterID("color");
 | `visual/win32/BasicDrawDevice.cpp` | 1009 | 绘制设备 |
 | `visual/win32/DrawDevice.cpp` `DInputMgn.cpp` `VideoOvlImpl.cpp` `PassThroughDrawDevice.cpp` | ~3400 | 其余 |
 
-计划：照 OpenBGI 的做法给 macOS 写 SDL2 版（`LayerBitmapImpl` 用软件位图 + SDL 纹理，
-窗口用 SDL2），`tvpgl` 已在上面验好。
+**勘察结论（本轮实测）**：
+- `visual/*.cpp` 里 26/33 直接可编译，`win32/` 那批里 `WindowImpl` / `BasicDrawDevice` /
+  `DrawDevice` / `LayerImpl` / `VideoOvlImpl` 也**全部可编译且零 Win32 调用**——它们是纯抽象 C++
+- 但 `environ/win32/` 的**应用窗口**这批是真的 Win32/VCL 专用（`windowsx.h`、`Classes.hpp`、
+  `vcl.h` 是 Borland C++ Builder），**无法复用**；`tTVPWindow` 有 **50 个纯虚函数**
+- `environ/Application.cpp` 可编译，它要的是平台自己的窗体类（`TTVPWindowForm` 的等价物）
+
+所以要写的就剩：一个 darwin 窗体（50 个纯虚，多数是琐碎的标题/尺寸/光标/IME/按键注入，
+真正有分量的是 `UpdateDrawBuffer` 送显——**已由 `krkrpresent` 验证可行**）+ 与
+`tTVPBasicDrawDevice` 的接线。
 
 ## 剩余工作（按依赖顺序）
 1. ~~XP3 归档层~~ ✅

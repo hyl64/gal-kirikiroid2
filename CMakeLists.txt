@@ -165,6 +165,12 @@ target_link_directories(krkrvis PUBLIC /opt/homebrew/lib ${OPENCV4_LIB})
 target_link_libraries(krkrvis PUBLIC ${FREETYPE_LIBRARIES})
 target_link_directories(krkrvis PUBLIC ${FREETYPE_LIBRARY_DIRS})
 
+add_executable(krkrpresent tools/krkrpresent.cpp)
+target_link_libraries(krkrpresent PRIVATE krkrvis ${SDL2_LIBRARIES})
+target_link_directories(krkrpresent PRIVATE ${SDL2_LIBRARY_DIRS})
+target_include_directories(krkrpresent PRIVATE ${KRKR_INCLUDES} ${SDL2_INCLUDE_DIRS}
+	${CMAKE_CURRENT_SOURCE_DIR}/platform)
+
 add_executable(krkrbitmap tools/krkrbitmap.cpp)
 target_link_libraries(krkrbitmap PRIVATE krkrvis ${SDL2_LIBRARIES})
 target_link_directories(krkrbitmap PRIVATE ${SDL2_LIBRARY_DIRS})
