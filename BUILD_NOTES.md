@@ -631,6 +631,25 @@ auto path，但仍然找不到——说明 `TVPSearchPlacedPath` 的查找时机
 （KAG 在 Initialize 早期就构建路径表，之后加的 auto path 可能不生效）。
 下轮查这个顺序。
 
+### 20c. KAG 初始化继续前进：从 Config.tjs 到 `gcsAuto`
+
+存储层对**裸文件名**（`Config.tjs`）不解析，只对完整存储名（`system/Config.tjs`）解析；
+`TVPAddAutoPath` 加 `file://…/system/` 也无效，而加**本地路径**会抛 `eTJSError`。
+
+为验证框架能走到哪一步，临时把 `system/*.tjs` 平铺到游戏根（测试布局），KAG 立即前进：
+
+```
+OS : macOS (macOS)
+KAG : 3.32 stable rev. 2
+Kirikiri : 2.32.0.0
+(info) Total 71 file(s) found, 43 file(s) activated.
+initialize failed: Member "gcsAuto" does not exist      ← 新的具体错误
+```
+
+**这是好事**：错误从「文件找不到」变成「缺某个成员」，说明 KAG 已经读进了自己的配置与脚本，
+正在按它的假设调用引擎/框架的成员。`gcsAuto` 来自 `Config.tjs` 的默认值，值得下一轮查
+（可能是 Config.tjs 被跳过，或该成员由 KAG 在更晚的步骤定义）。
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。

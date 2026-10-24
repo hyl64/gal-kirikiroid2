@@ -178,10 +178,11 @@ int main(int argc, char** argv)
 		if(getcwd(cwd, sizeof cwd) != nullptr)
 			root += cwd;
 		root += "/";
-		TVPAddAutoPath(ttstr(root.c_str()));
 		// KAG's own scripts live in system/ and name each other without the
-		// prefix, so that folder is searchable too
+		// prefix, so that folder goes in first (the first match wins)
 		TVPAddAutoPath(ttstr((root + "system/").c_str()));
+		TVPAddAutoPath(ttstr(root.c_str()));
+
 		TVPSetCurrentDirectory(ttstr(root.c_str()));
 	}
 
