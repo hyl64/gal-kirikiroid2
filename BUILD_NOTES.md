@@ -461,7 +461,27 @@ $ ./build/krkrrun tests/layer.tjs
 - 填充矩形**钳到纹理边界**
 - `taskNum` 至少为 1
 
-### 18a. 排查过程（保留，作为教训）
+### 18a. 图层上屏（合成结果读回）✅
+`krkrrun` 新增 `--screenshot <path>`：脚本跑完后从绘制设备的主图层取像素存图。
+
+```bash
+$ ./build/krkrrun tests/compose.tjs --screenshot /tmp/composed.bmp
+[Information] updated
+wrote /tmp/composed.bmp (640x480)      # corner (32,64,96) = 填充色, 397 个文字像素
+```
+
+产物 `screenshots/layer-window.png`：640×480 深蓝底 + 左上角「レイヤーに描けた」。
+**完整链路**（全部是引擎自己的对象和代码）：
+
+```
+new Window() → new Layer(win,null) → fillRect → drawText → win.update()
+  → 图层合成（LayerManager/DrawDevice）→ 主图层 → 逐像素读回
+```
+
+这就是 KiriKiri 的「hello world 上屏」。剩下的是 KAG 运行时（游戏自带的 TJS 框架）
+和真实游戏数据。
+
+### 18b. 排查过程（保留，作为教训）
 
 **现象**：脚本 `new Window()` 成功，紧接着 `new Layer(...)` 在图层构造函数里崩：
 

@@ -27,8 +27,14 @@
 #include "DebugIntf.h"
 #include "PluginImpl.h"
 #include "tvpgl.h"
+#include "DrawDevice.h"
+#include "LayerIntf.h"
+#include "LayerBitmapIntf.h"
+
+#include <SDL.h>
 
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 #include <unistd.h>
@@ -77,6 +83,39 @@ static void Register(iTJSDispatch2* global, const tjs_char* name, iTJSDispatch2*
 	global->PropSet(TJS_MEMBERENSURE | TJS_IGNOREPROP, name, NULL, &val, global);
 }
 
+// what the window composited, written out so the frame can be looked at
+static bool SaveComposed(const char* path)
+{
+	extern iTVPDrawDevice* TVPGetLastDrawDeviceDarwin();
+	iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin();
+	if(device == nullptr)
+	{
+		fprintf(stderr, "krkrrun: no draw device was constructed\n");
+		return false;
+	}
+	tTJSNI_BaseLayer* primary = device->GetPrimaryLayer();
+	if(primary == nullptr)
+	{
+		fprintf(stderr, "krkrrun: the device has no primary layer\n");
+		return false;
+	}
+	tTVPBaseTexture* screen = primary->GetMainImage();
+	const int w = (int)screen->GetWidth();
+	const int h = (int)screen->GetHeight();
+	if(w <= 0 || h <= 0)
+	{
+		fprintf(stderr, "krkrrun: the primary layer is %dx%d\n", w, h);
+		return false;
+	}
+	SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormatFrom((void*)screen->GetScanLine(0),
+		w, h, 32, screen->GetPitchBytes(), SDL_PIXELFORMAT_ABGR8888);
+	const bool ok = surf != nullptr && SDL_SaveBMP(surf, path) == 0;
+	if(surf != nullptr)
+		SDL_FreeSurface(surf);
+	printf(ok ? "wrote %s (%dx%d)\n" : "cannot write %s\n", path, w, h);
+	return ok;
+}
+
 int main(int argc, char** argv)
 {
 	if(argc < 2)
@@ -118,6 +157,12 @@ int main(int argc, char** argv)
 	{
 		ttstr name = ttstr(argv[1]);
 		tjs->ExecScript(&script[0], nullptr, nullptr, name.c_str());
+		// an optional frame, taken after the script has run
+		if(argc >= 4 && strcmp(argv[2], "--screenshot") == 0)
+		{
+			fflush(stdout);
+			SaveComposed(argv[3]);
+		}
 	}
 	catch(const eTJS& e)
 	{

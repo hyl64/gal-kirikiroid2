@@ -176,9 +176,18 @@ bool tTVPDrawDevice_Darwin::SaveScreen(const char* path)
 }
 
 // the factory the engine's application layer would call
+// The device the window was given, so a tool can look at what it composited.
+static tTVPDrawDevice_Darwin* gLastDevice = nullptr;
+
 tTVPDrawDevice* TVPCreateDrawDeviceDarwin()
 {
-	return new tTVPDrawDevice_Darwin();
+	gLastDevice = new tTVPDrawDevice_Darwin();
+	return gLastDevice;
+}
+
+iTVPDrawDevice* TVPGetLastDrawDeviceDarwin()
+{
+	return gLastDevice;
 }
 
 // what the screen holds, for the tools that check a frame
