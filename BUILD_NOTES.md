@@ -539,6 +539,33 @@ if(iTVPLayerManager* m = primary->GetManager())
 至此引擎②的显示链路完整：**脚本 → 窗口 → 图层树（父/子）→ 图层管理器合成
 → 绘制设备 → 帧**。
 
+### 19. 拿到真实 KAG3 框架（引擎②终于有真实数据了）
+
+来源：[Hollow-Moon/kag3](https://github.com/Hollow-Moon/kag3)——KAG3 移植到吉里吉里Z 的
+版本，W.Dee 原作，许可是「**改変・配布は自由**」（可自由修改分发），所以可以放进
+`testdata/kag3-sample/`（552 KB，38 个文件）。
+
+**这是真实的框架**，不是我自己写的 mini-KAG：
+- `startup.tjs` —— 引擎启动后第一个脚本
+- `system/Initialize.tjs`、`MainWindow.tjs`、`Config.tjs`、`MessageLayer.tjs`、`HistoryLayer.tjs` …
+- `scenario/first.ks` —— 示例剧本（`[wait time=200]` / `[cm]` / 台词）
+- 菜单、存档、历史、动画层等完整 KAG3 功能脚本
+
+**跑起来的进度**（用 `krkrrun` 逐步试）：
+```
+ok: plugins menu          ← Plugins.link 不报错
+ok: plugins kagparser
+fail: execStorage -> Internal error    ← 卡在这里
+```
+
+即：`startup.tjs` 里的 `Scripts.execStorage("system/Initialize.tjs")` 失败。
+这正是存储层要和 KAG 对上的地方——**KAG 用「相对于游戏根的存储名」**，
+而我们的存储解析还没配置好搜索路径。
+
+**下一步**（非常具体）：
+1. 让 `TVPGetPlacedPath` / 存储搜索路径包含游戏根目录（KiriKiri 启动时做的其中一件事）
+2. 再跑 `startup.tjs`，把 `Internal error` 变成具体的下一步错误
+
 ### 18g. mini-KAG 完整跑通 ✅（「尺寸 bug」是假的，缺的是 visible）
 
 **结论：没有尺寸问题。** 前面的二分实验全部失败的原因是——**子图层默认不可见**。
