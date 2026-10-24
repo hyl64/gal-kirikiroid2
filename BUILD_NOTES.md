@@ -170,6 +170,34 @@ raw bytes: 112860 for 513x55
 GetPitchBytes）+ 解码器要用的 `TVPClearGraphicCache()` 空钩子。
 解码器因此可以链接；完整的位图层（文字/字体/绘制）仍待补。
 
+### 7. 字体与文字渲染 → `krkrfont` ✅（galgame 的核心）
+上游的文字管线 `FreeType.cpp` / `FreeTypeFontRasterizer.cpp` / `FontSystem.cpp` /
+`PrerenderedFont.cpp` / `CharacterData.cpp` **是平台无关的**，只差几个平台钩子：
+
+| 钩子 | 实现 |
+|---|---|
+| `TVPGetDefaultFontName()` | Hiragino Sans GB → Arial Unicode → AppleSDGothicNeo（`KRKR_FONT`/`ONS_FONT` 可覆盖） |
+| `TVPCreateFontStream()` | 走存储层 `TVPCreateStream` |
+| `TVPGetAllFontList()` | 扫 `/System/Library/Fonts`、`/Library/Fonts`、`~/Library/Fonts` |
+| `TVPFontSystem` | 一个 `FontSystem` 实例 |
+
+`environ/ConfigManager/*` 绑 cocos2d，桌面版用 `platform/darwin/darwin_config.cpp`
+重新实现同一个类（无偏好文件时一律返回调用方默认值）。
+
+**实测（真实日文字形，抗锯齿）**：
+```
+$ ./build/krkrfont /tmp/font.bmp 40 "あ漢A9"
+  U+3042 extent 40x40 blackbox 32x36 pitch 32 origin (4,2) aa=1 full=0
+  U+6F22 extent 40x40 blackbox 37x38 pitch 40 origin (1,1) aa=1 full=0
+  U+0041 extent 30x40 blackbox 30x31 pitch 32 origin (0,4) aa=1 full=0
+$ ./build/krkrfont /tmp/font2.bmp 48 "ナルキッソス"
+```
+渲染出的「あ漢A9」与「ナルキッソス」都清晰可读（见提交说明里的验证记录）。
+
+**又一个格式坑**：普通字形的 `tTVPCharacterData::Data` 是**8 位覆盖率**（一字节一像素，
+`Pitch == BlackBoxX`），不是 4 字节；只有 `FullColored` 字形才是 4 字节 BGRA。
+按 4 字节读会得到重影糊字。
+
 ## 窗口层的真实工作量（下一步）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：

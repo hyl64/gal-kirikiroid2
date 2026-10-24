@@ -28,6 +28,7 @@ set(KRKR_INCLUDES
 	${CORE}/base/win32
 	${CORE}/environ
 	${CORE}/environ/win32
+	${CORE}/environ/ConfigManager
 	${CORE}/msg
 	${CORE}/msg/win32
 	${CORE}/utils
@@ -56,6 +57,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(ONIG REQUIRED oniguruma)
 pkg_check_modules(SDL2 REQUIRED sdl2)
 pkg_check_modules(PNG REQUIRED libpng)
+pkg_check_modules(FREETYPE REQUIRED freetype2)
 
 # ---- TJS2: the script engine -------------------------------------------------
 # Everything under src/core/tjs2; it needs the message catalogue and a handful
@@ -126,12 +128,27 @@ add_library(krkrvis STATIC
 	${CORE}/visual/gl/blend_function.cpp
 	${CORE}/visual/LoadPNG.cpp
 	${CORE}/visual/LoadTLG.cpp
+	${CORE}/visual/FontSystem.cpp
+	${CORE}/visual/FreeType.cpp
+	${CORE}/visual/FreeTypeFontRasterizer.cpp
+	${CORE}/visual/PrerenderedFont.cpp
+	${CORE}/visual/CharacterData.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/platform/darwin/darwin_font.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/platform/darwin/darwin_config.cpp
 	${CORE}/visual/darwin/LayerBitmapImpl.cpp)
 target_include_directories(krkrvis PUBLIC ${KRKR_INCLUDES}
 	${CMAKE_CURRENT_SOURCE_DIR}/platform)
 target_link_libraries(krkrvis PUBLIC krkrbase ${PNG_LIBRARIES})
 target_link_directories(krkrvis PUBLIC ${PNG_LIBRARY_DIRS})
-target_include_directories(krkrvis PUBLIC ${PNG_INCLUDE_DIRS})
+target_include_directories(krkrvis PUBLIC ${PNG_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
+target_link_libraries(krkrvis PUBLIC ${FREETYPE_LIBRARIES})
+target_link_directories(krkrvis PUBLIC ${FREETYPE_LIBRARY_DIRS})
+
+add_executable(krkrfont tools/krkrfont.cpp)
+target_link_libraries(krkrfont PRIVATE krkrvis ${SDL2_LIBRARIES})
+target_link_directories(krkrfont PRIVATE ${SDL2_LIBRARY_DIRS})
+target_include_directories(krkrfont PRIVATE ${KRKR_INCLUDES} ${SDL2_INCLUDE_DIRS}
+	${CMAKE_CURRENT_SOURCE_DIR}/platform)
 
 add_executable(krkrview tools/krkrview.cpp)
 target_link_libraries(krkrview PRIVATE krkrvis ${SDL2_LIBRARIES})
