@@ -144,15 +144,18 @@ add_library(krkrvis STATIC
 	${CORE}/visual/win32/BitmapBitsAlloc.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/platform/compat/renderer/CCTexture2D.cpp
 	${CORE}/visual/argb.cpp
-	${CORE}/visual/darwin/ResampleImage_Soft.cpp)
+	${CORE}/visual/darwin/ResampleImage_Soft.cpp
+	${CORE}/visual/win32/DrawDevice.cpp
+	${CORE}/visual/win32/LayerImpl.cpp
+	${CORE}/visual/darwin/DrawDevice_Darwin.cpp)
 target_include_directories(krkrvis PUBLIC ${KRKR_INCLUDES}
 	${CMAKE_CURRENT_SOURCE_DIR}/platform)
-target_link_libraries(krkrvis PUBLIC krkrbase ${PNG_LIBRARIES})
+target_link_libraries(krkrvis PUBLIC krkrbase ${PNG_LIBRARIES} ${SDL2_LIBRARIES})
 target_link_directories(krkrvis PUBLIC ${PNG_LIBRARY_DIRS})
-target_include_directories(krkrvis PUBLIC ${PNG_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} ${LZ4_INCLUDE_DIRS}
+target_include_directories(krkrvis PUBLIC ${PNG_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} ${LZ4_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS}
 	/opt/homebrew/opt/opencv@4/include/opencv4 /opt/homebrew/include
 	${CMAKE_CURRENT_SOURCE_DIR}/platform/compat)
-target_link_directories(krkrvis PUBLIC ${LZ4_LIBRARY_DIRS})
+target_link_directories(krkrvis PUBLIC ${LZ4_LIBRARY_DIRS} ${SDL2_LIBRARY_DIRS})
 # Homebrew carries OpenCV 5 and OpenCV 4 side by side and both install
 # libopencv_*.dylib; the render manager is written against the 4.x API
 # (getAffineTransform, getPerspectiveTransform with three arguments), so the

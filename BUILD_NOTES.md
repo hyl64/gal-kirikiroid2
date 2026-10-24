@@ -292,6 +292,26 @@ presented 60 frame(s) on 'cocoa'      ← 真的开了一个 Cocoa 窗口
 
 **验证**：截图与源图逐像素比对 **0/28215 差异**（用 513×55 带 alpha 的图测）。
 
+### 12. 绘制设备（DrawDevice）→ `DrawDevice_Darwin.cpp` ✅（部分）
+`tTVPDrawDevice`（`visual/win32/DrawDevice.cpp`，**零 Win32 调用**）是引擎的合成器，
+实现了 54/56 个方法。平台的活只剩 **4 个虚函数**：
+
+| 虚函数 | darwin 实现 |
+|---|---|
+| `Show()` | 主图层的位图 → SDL 纹理 → `SDL_RenderPresent`（真的开窗口） |
+| `StartBitmapCompletion` / `NotifyBitmapCompleted` / `EndBitmapCompletion` | CPU 合成器同步完成，无需等待，空实现 |
+
+写了 `src/core/visual/darwin/DrawDevice_Darwin.cpp`，编译链接通过。
+
+**但接线还需要图层对象**（`tTJSNI_BaseLayer`，在 `LayerIntf.cpp` = 图层系统本体）。
+把它加进库后，又拉出整串运行时服务：`TVPPostEvent`（事件）、`TVPGetCursor`（光标）、
+`TVPLoadGraphic`/`TVPSaveImage`（图像）、`TVPCreateRectObject`、`ColorToRGB`、
+`TVPActionName`/`TVPEventDisabled`/`TVPSimpleImageProvider` 三个全局。
+
+**这是引擎②最后一段的真实清单**：图层系统 + 这些运行时服务接线。本轮为保证构建
+全绿，把 `LayerIntf.cpp` 与对应工具撤下（不留死代码/坏目标），九个工具全部回归通过
+（`krkrpresent` 仍逐像素 0 差异）。
+
 ## 窗口层的真实工作量（下一步，已勘察清楚）
 
 渲染要落地，缺的是**平台位图层与窗口层**，上游是 Win32 GDI 实现：
