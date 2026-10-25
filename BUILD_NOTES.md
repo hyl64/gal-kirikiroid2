@@ -1067,6 +1067,17 @@ wrote /tmp/real.bmp (1280x720, presented frame)     帧内 92,150 种颜色
 
 **这是引擎② 第一次把一款真实 KAG 游戏的标题画面完整画出来。**
 
+### 28. 输入注入：点击能送进去了
+
+`KRKR_AUTO_CLICK="x,y,ms"` —— 在运行循环里到点调用
+`iTVPLayerManager::NotifyClick(x, y)`（窗口收到鼠标时走的就是这个）。
+
+**已验证送达**（日志 `[input] clicked 1000,400`），但**还没验证 KAG 的按钮会响应**：
+真实工程的标题画面上，点了 `start` 之后画面没变。
+
+**下一步**：查点击进入管理器之后的分发（`tTVPLayerManager::PrimaryClick` →
+各图层的 `onClick`），看是坐标没命中按钮，还是事件没继续往下传。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
