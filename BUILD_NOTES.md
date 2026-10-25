@@ -1438,6 +1438,34 @@ wrote … (1280x720)     92150 色 = 标题画面
 **下一步**：查 KAG 的 `[s]` 具体挂在哪个事件上（`Conductor` 里搜 `onPrimaryClick` / `stop`），
 以及为什么基础层会被命中（它的 `hitThreshold` 应该是 256 才对，实测是 0）。
 
+### 47. 台词点击的症结：primary 层收不到鼠标事件
+
+在**测试数据**里给 KAG 的 `onPrimaryClick` 加了一行打印（`MainWindow.tjs`），
+然后点标题按钮、点对话框：
+
+```
+DEBUG: onPrimaryClick 出现次数：0
+```
+
+说明 `window.onPrimaryClick()` **从未被调用**——而它是 KAG 推进台词/处理点击的总入口。
+
+KAG 的注释写得很清楚（`MainWindow.tjs:3785`）：
+
+> プライマリレイヤで「クリックの動作」がなにもフィルタリングされなかったとき、
+> プライマリレイヤから呼ばれる。
+> （**当点击没有被任何东西过滤时，由 primary 层调用**）
+
+也就是说：子层（背景/按钮）收到点击后，如果它**不处理**这次点击，primary 层也要收到。
+而我们的 `PrimaryMouseDown` 只把它交给最前面的子层，**primary 永远收不到**。
+
+**实验**：在 `PrimaryMouseDown` 里让 primary 也收到 mouseDown
+→ 报错 `The object is already invalidated`（primary 可能在 KAG 重建图层时已失效）
+→ **已回退**，基线恢复正常。
+
+**下一步**：不能直接在 primary 上 `FireMouseDown`，要走引擎自己的机制——
+`HitTestNoVisibleCheck` 里已经有 `OnHitTest_Work` / `onHitTest` 的钩子
+（图层可以「拒绝」这次命中），需要确认这条路径是否把「没人要的点击」交回 primary。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
