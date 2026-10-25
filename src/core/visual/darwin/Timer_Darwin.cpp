@@ -43,7 +43,9 @@ namespace
 	{
 	public:
 		tjs_int Interval = 1000;
-		bool Enabled = false;
+		// a new Timer starts enabled in the original: a script creates one and
+		// expects it to start firing without saying so
+		bool Enabled = true;
 		tjs_int Mode = 0;
 		tjs_int Capacity = 0;
 		tTJSVariant* Handler = nullptr;
@@ -218,47 +220,48 @@ iTJSNativeInstance* tTJSNC_Timer_Darwin::CreateNativeInstance()
 void TVPDarwinTickTimers()
 {
 	using clock = std::chrono::steady_clock;
+
+	/* A handler may create or destroy timers while it runs, and that reallocates
+	 * gRunning: an iterator walking it would be invalidated mid-loop.  The handlers
+	 * that are due are copied out first - a tTJSVariant copy holds its own
+	 * reference - and called once the list has been updated. */
+	std::vector<tTJSVariant> due;
+	const auto now = clock::now();
 	for(auto& t : gRunning)
 	{
 		if(t.Enabled == nullptr || !*t.Enabled)
 			continue;
-		const auto now = clock::now();
 		if(now < t.Next)
 			continue;
-		// a zero interval means "as soon as possible" to a script that drives a
-		// loop with it, which is how KAG's conductor keeps time
 		const int interval = t.Interval != nullptr && *t.Interval > 0 ? *t.Interval : 1;
 		t.Next = now + std::chrono::milliseconds(interval);
 		if(getenv("KRKR_DEBUG_TIMER"))
 		{
-			fprintf(stderr, "[timer] firing (enabled=%d interval=%d handler=%p)\n",
-				(int)(t.Enabled ? *t.Enabled : 0), (int)(t.Interval ? *t.Interval : 0),
-				(void*)(t.Handler ? *t.Handler : nullptr));
+			fprintf(stderr, "[timer] due, interval=%d enabled=%d\n", interval,
+				(int)(t.Enabled ? *t.Enabled : 0));
 			fflush(stderr);
 		}
 		if(t.Handler != nullptr && *t.Handler != nullptr && (*t.Handler)->Type() != tvtVoid)
+			due.push_back(**t.Handler);
+	}
+
+	for(tTJSVariant& handler : due)
+	{
+		tTJSVariantClosure clo = handler.AsObjectClosureNoAddRef();
+		tTJSVariant result;
+		try
 		{
-			tTJSVariantClosure clo = (*t.Handler)->AsObjectClosureNoAddRef();
-			tTJSVariant result;
-			try
-			{
-				const tjs_error hr = clo.FuncCall(0, nullptr, nullptr, &result, 0, nullptr, nullptr);
-				if(getenv("KRKR_DEBUG_TIMER"))
-				{
-					fprintf(stderr, "[timer] handler returned %d\n", (int)hr);
-					fflush(stderr);
-				}
-			}
-			catch(const eTJS& e)
-			{
-				fprintf(stderr, "[timer] handler threw: %ls\n", (const wchar_t*)e.GetMessage().c_str());
-				fflush(stderr);
-			}
-			catch(...)
-			{
-				fprintf(stderr, "[timer] handler threw something else\n");
-				fflush(stderr);
-			}
+			clo.FuncCall(0, nullptr, nullptr, &result, 0, nullptr, nullptr);
+		}
+		catch(const eTJS& e)
+		{
+			fprintf(stderr, "[timer] handler threw: %ls\n", (const wchar_t*)e.GetMessage().c_str());
+			fflush(stderr);
+		}
+		catch(...)
+		{
+			fprintf(stderr, "[timer] handler threw something else\n");
+			fflush(stderr);
 		}
 	}
 }
