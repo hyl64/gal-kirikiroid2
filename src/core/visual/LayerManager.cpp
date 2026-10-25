@@ -382,8 +382,41 @@ void tTVPLayerManager::PrimaryClick(tjs_int x, tjs_int y)
 	tTJSNI_BaseLayer * l = GetMostFrontChildAt(x, y);
 	if(getenv("KRKR_DEBUG_INPUT"))
 	{
-		fprintf(stderr, "[click] at %d,%d front=%p capture=%p match=%d\n", (int)x, (int)y,
+		fprintf(stderr, "[click] t=%llu at %d,%d front=%p capture=%p match=%d\n",
+			(unsigned long long)TVPGetTickCount(), (int)x, (int)y,
 			(void*)l, (void*)CaptureOwner, (int)(l != nullptr && CaptureOwner == l));
+		if(getenv("KRKR_DEBUG_LAYERS") && Primary)
+		{
+			// what the tree looks like where the click landed
+			fprintf(stderr, "[layers] primary %d,%d %dx%d\n", (int)Primary->GetLeft(),
+				(int)Primary->GetTop(), (int)Primary->GetWidth(), (int)Primary->GetHeight());
+			std::function<void(tTJSNI_BaseLayer*, int)> walk = [&](tTJSNI_BaseLayer* node, int depth)
+			{
+				if(depth > 3 || node == nullptr) return;
+				tObjectListSafeLockHolder<tTJSNI_BaseLayer> h(node->Children);
+				for(tjs_int i = 0; i < node->Children.GetSafeLockedObjectCount(); i++)
+				{
+					tTJSNI_BaseLayer* c = node->Children.GetSafeLockedObjectAt(i);
+					if(!c) continue;
+					fprintf(stderr, "[layers] %*s%d: %d,%d %dx%d visible=%d opac=%d type=%d\n",
+						depth * 2, "", (int)i, (int)c->GetLeft(), (int)c->GetTop(),
+						(int)c->GetWidth(), (int)c->GetHeight(), (int)c->GetVisible(),
+						(int)c->GetOpacity(), (int)c->GetType());
+					walk(c, depth + 1);
+				}
+			};
+			if(l) { fprintf(stderr, "[layers] under the click:\n"); walk(l, 1); }
+			tObjectListSafeLockHolder<tTJSNI_BaseLayer> holder(Primary->Children);
+			for(tjs_int i = 0; i < Primary->Children.GetSafeLockedObjectCount(); i++)
+			{
+				tTJSNI_BaseLayer* c = Primary->Children.GetSafeLockedObjectAt(i);
+				if(!c) continue;
+				fprintf(stderr, "[layers] child %d: %d,%d %dx%d visible=%d opac=%d\n", (int)i,
+					(int)c->GetLeft(), (int)c->GetTop(), (int)c->GetWidth(), (int)c->GetHeight(),
+					(int)c->GetVisible(), (int)c->GetOpacity());
+			}
+			fflush(stderr);
+		}
 		fflush(stderr);
 	}
 	if(l && CaptureOwner == l)
