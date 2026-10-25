@@ -1035,6 +1035,38 @@ PVR/WebP 已从处理器表移除；PVR 的 header 探测已改成「签名不�
 
 **仍在排查**：还有哪条路径会走到 PVR 桩（可能是引擎别处按扩展名直接调）。
 
+### 27. 🏆🏆 真实 KAG 游戏出画面了（背景 + 按钮）
+
+**根因（一个反直觉的）**：引擎的 `TVPInternalLoadTexture` **无条件**调用
+`TVPLoadPVRv3(stream, cb)` —— 在 Windows 上那是「把图片上传成 GPU 纹理」的通用加载器，
+**不是 PVR 专用**。我把它当 PVR 解码器桩成了「抛异常」，于是**所有图片**都死在它那儿。
+
+**修法**：让那个重载返回 `nullptr`，这样 `TVPLoadGraphic` 会回落到位图加载路径
+（那里按扩展名/文件头分派，JPEG/PNG/TLG/BMP 全都能用）：
+
+```cpp
+iTVPTexture2D* TVPLoadPVRv3(tTJSBinaryStream*, const std::function<...>&)
+{
+    // 软件后端把图片放在位图里，不建 GPU 纹理；回落到位图加载器
+    return nullptr;
+}
+```
+
+**结果**：
+
+```
+bgimage/bg0.jpg -> 1280x720
+bgimage/bg0     -> 1280x720      ← 不带扩展名也能靠「试探扩展名」找到
+
+Scenario loaded : first.ks / 0.ks
+wrote /tmp/real.bmp (1280x720, presented frame)     帧内 92,150 种颜色
+```
+
+**产物 `screenshots/real-game-title.png`**：《UI Test》ACG 工程的标题画面——
+真实的绿色草地/光晕背景（`bg0.jpg` 正确解码）+ 右侧 **start** / **setting** 两个按钮。
+
+**这是引擎② 第一次把一款真实 KAG 游戏的标题画面完整画出来。**
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的

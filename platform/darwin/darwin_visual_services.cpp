@@ -78,9 +78,17 @@ void TVPLoadBPG(void*, void*, tTVPGraphicSizeCallback, tTVPGraphicScanLineCallba
 	UnsupportedFormat("BPG");
 }
 
-void TVPLoadPVRv3(tTJSBinaryStream*, const std::function<void(const ttstr&, const tTJSVariant&)>&)
+iTVPTexture2D* TVPLoadPVRv3(tTJSBinaryStream* s,
+	const std::function<void(const ttstr&, const tTJSVariant&)>& meta)
 {
-	UnsupportedFormat("PVR");
+	/* The engine reaches this when a picture is to become a GPU texture; the
+	 * Windows build's version does that for every format.  A software back end
+	 * keeps its pictures in bitmaps, so answering nothing makes TVPLoadGraphic
+	 * fall back to the bitmap loader, which handles every format the handler
+	 * table knows. */
+	(void)s;
+	(void)meta;
+	return nullptr;
 }
 
 void TVPLoadPVRv3(void*, void*, tTVPGraphicSizeCallback, tTVPGraphicScanLineCallback,
