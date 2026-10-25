@@ -547,14 +547,24 @@ void TVPResetVolumeToAllSoundBuffer()
 }
 
 
-/* The idle pass: events posted with TVPPostEvent (every layer's onClick,
- * onMouseDown, onMouseUp, KAG's own conductor triggers) wait in a queue until
- * something delivers them, and this is the point the engine expects to do it.  An
- * empty body here means events are queued and never run. */
+/* Queued events (timers, AsyncTrigger, asynchronous sound/video callbacks) are
+ * dispatched here.  Layer mouse callbacks use TVP_EPT_IMMEDIATE and do not pass
+ * through this queue.  Avoid recursive queue delivery when a handler posts a new
+ * event; the main loop will call this entry point again. */
+static int gDelivering;
 void tTVPSystemControl::InvokeEvents()
 {
 	extern void TVPDeliverAllEvents();
+	if(gDelivering > 0)
+		return;
+	gDelivering++;
+	if(getenv("KRKR_DEBUG_EVENTS"))
+	{
+		fprintf(stderr, "[events] delivering\n");
+		fflush(stderr);
+	}
 	TVPDeliverAllEvents();
+	gDelivering--;
 }
 
 // the system control's idle bookkeeping: without an idle loop none of it runs
@@ -566,6 +576,9 @@ void tTVPSystemControl::EndContinuousEvent()
 {
 }
 
+// TVPDeliverAllEvents calls TVPEventReceived before dispatch; that clears
+// TVPEventInvoked and then calls this notification.  Calling TVPEventReceived
+// here would recurse even when no other delivery is active.
 void tTVPSystemControl::NotifyEventDelivered()
 {
 }
@@ -576,6 +589,17 @@ void tTVPSystemControl::NotifyEventDelivered()
 // smallest one that satisfies the class.
 tTVPSystemControl::tTVPSystemControl()
 {
+	/* EventEnable decides whether TVPPostEvent delivers anything at all, and the
+	 * Windows constructor is where it gets its value.  Left uninitialised here it
+	 * is whatever the memory held, which is how every event - every layer's
+	 * onClick, KAG's window triggers - came to be dropped. */
+	EventEnable = true;
+	ContinuousEventCalling = false;
+	AutoShowConsoleOnError = false;
+	LastCompactedTick = 0;
+	LastCloseClickedTick = 0;
+	LastShowModalWindowSentTick = 0;
+	LastRehashedTick = 0;
 }
 
 void tTVPSystemControl::CallDeliverAllEventsOnIdle()
