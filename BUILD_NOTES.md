@@ -956,7 +956,33 @@ wrote /tmp/kag_final2.bmp (640x480, presented frame)     帧内 231 种颜色
 
 **脚本 → 框架 → 消息层 → 图层树 → 合成 → 设备 → 屏幕**，全链路在 arm64 原生构建上跑通。
 
-### 24. 尝试「直接从 data.xp3 启动」——未成功，已回退
+### 24. ✅ 直接从 `data.xp3` 启动（真实游戏的发布形态）
+
+**关键发现**：存储名里 `>` 表示「归档内部」，但**相对名字要靠「当前目录」解析**，
+光加自动路径不够（子目录名解析不到）。正确做法是把归档设为当前目录：
+
+```cpp
+std::string root = std::string("file://") + realpath + ">";   // 注意结尾的 '>'
+TVPSetCurrentDirectory(ttstr(root.c_str()));
+TVPAddAutoPath(ttstr(root.c_str()));
+// 然后 Scripts.execStorage("startup.tjs")
+```
+
+**结果**（`krkrrun kag3.xp3`，KAG3 工程 30 个文件全在归档里）：
+
+```
+KAG : 3.32 stable rev. 2
+KAG System スクリプトを読み込んでいます...
+KAGLayer.tjs を読み込みました(2ms)
+KAGMainWindow のコンストラクタで 8ms かかりました
+Scenario loaded : first.ks
+wrote /tmp/arc.bmp (640x480, presented frame)     帧内 231 种颜色
+```
+
+**这是引擎② 距离真实游戏最近的一步**：真实的 KiriKiri 游戏都以 `data.xp3` 发布，
+现在「传归档就跑」通了。产物 `screenshots/archive-launch.png`。
+
+### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
 `startup.tjs`」是必要能力。本轮的尝试：

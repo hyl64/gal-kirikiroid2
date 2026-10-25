@@ -163,7 +163,10 @@ int main(int argc, char** argv)
 		return 2;
 	}
 	std::vector<tjs_char> script;
-	if(!ReadScript(argv[1], script))
+	const std::string argEarly(argv[1]);
+	const bool archiveEarly = argEarly.size() > 4
+		&& argEarly.compare(argEarly.size() - 4, 4, ".xp3") == 0;
+	if(!archiveEarly && !ReadScript(argv[1], script))
 	{
 		fprintf(stderr, "krkrrun: cannot read %s\n", argv[1]);
 		return 1;
@@ -239,8 +242,34 @@ int main(int argc, char** argv)
 			TJS_W("global.kirikiri2 = true;");
 		tjs->ExecScript(prelude, nullptr, nullptr, TJS_W("(prelude)"));
 
-		ttstr name = ttstr(argv[1]);
-		tjs->ExecScript(&script[0], nullptr, nullptr, name.c_str());
+		// A game may ship as an archive: make it the storage root and run the
+		// project's startup.tjs from inside it, the way the engine's start-up does.
+		static const char kXp3Tail[] = ".xp3";
+		const std::string arg(argv[1]);
+		const bool isArchive = arg.size() > 4 && arg.compare(arg.size() - 4, 4, kXp3Tail) == 0;
+		if(isArchive)
+		{
+			char real[PATH_MAX];
+			if(realpath(arg.c_str(), real) == nullptr)
+			{
+				fprintf(stderr, "krkrrun: cannot resolve %s\n", arg.c_str());
+				return 1;
+			}
+			// the trailing ">" is how a storage name says "inside this archive"
+			std::string root = std::string("file://") + real + ">";
+			TVPSetCurrentDirectory(ttstr(root.c_str()));
+			TVPAddAutoPath(ttstr(root.c_str()));
+			const tjs_char bootstrap[] =
+				TJS_W("if(!Storages.isExistentStorage(\"startup.tjs\"))")
+				TJS_W(" throw new Exception(\"no startup.tjs in the archive\");")
+				TJS_W("Scripts.execStorage(\"startup.tjs\");");
+			tjs->ExecScript(bootstrap, nullptr, nullptr, TJS_W("(archive)"));
+		}
+		else
+		{
+			ttstr name = ttstr(argv[1]);
+			tjs->ExecScript(&script[0], nullptr, nullptr, name.c_str());
+		}
 
 		// an optional run loop: a framework that waits for timers and events needs
 		// one, or it never gets past its first wait
