@@ -547,9 +547,14 @@ void TVPResetVolumeToAllSoundBuffer()
 }
 
 
-// the system control's idle pass: no events are queued here
+/* The idle pass: events posted with TVPPostEvent (every layer's onClick,
+ * onMouseDown, onMouseUp, KAG's own conductor triggers) wait in a queue until
+ * something delivers them, and this is the point the engine expects to do it.  An
+ * empty body here means events are queued and never run. */
 void tTVPSystemControl::InvokeEvents()
 {
+	extern void TVPDeliverAllEvents();
+	TVPDeliverAllEvents();
 }
 
 // the system control's idle bookkeeping: without an idle loop none of it runs
