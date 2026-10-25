@@ -1015,6 +1015,26 @@ else throw new Exception("Config.tjs が見つかりません。");
 
 **画面仍然是空的**（在标题画面等输入），下一步是注入按键。
 
+### 26. 真实游戏要 JPEG：解码器已接入，但图片路径仍撞到 PVR 桩
+
+真实游戏的背景是 JPEG，而本后端原来只有 PNG/TLG。这轮：
+
+1. 把引擎自带的 `visual/LoadJPEG.cpp` 编进构建（对 Homebrew 的 jpeg-turbo）
+2. 加 `platform/compat/jinclude.h`（libjpeg-turbo 不提供这个内部头，且文件并不真用它的东西）
+3. 删掉平台层里「JPEG 无解码器」的桩和重复的 `TVPJPEGLoadPrecision`
+
+**ACERG 游戏工程现在能加载剧本链**（first.ks → 0.ks），但画背景时报：
+
+```
+0.ks : [image storage="bg0" page=fore layer=base]
+Cannot open storage the macOS back end has no decoder for PVR
+```
+
+**已排除**：文件本身是合法 JPEG（`file` 确认 JFIF 1280×720）；`.jpg` 处理器在表里；
+PVR/WebP 已从处理器表移除；PVR 的 header 探测已改成「签名不匹配就静默返回」。
+
+**仍在排查**：还有哪条路径会走到 PVR 桩（可能是引擎别处按扩展名直接调）。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
