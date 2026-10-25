@@ -14,6 +14,7 @@
 #include "tjsError.h"
 #include "tjsNative.h"
 #include "tjsVariant.h"
+#include "tjsDebug.h"
 
 #include "WindowIntf.h"
 #include "MenuItemIntf.h"
@@ -200,6 +201,12 @@ int main(int argc, char** argv)
 	extern tTJS* TVPScriptEngine;
 	tTJS* tjs = new tTJS();
 	TVPScriptEngine = tjs;
+	// KRKR_TJS_TRACE=1 keeps the TJS call stack so a script exception prints
+	// where in the game's scripts it happened, not just "immediate event"
+	if(getenv("KRKR_TJS_TRACE") != nullptr)
+	{
+		TJS::TJSAddRefStackTracer();
+	}
 	// the engine's own TJS-level definitions (gcsAuto and the rest); KAG needs them
 	extern void TVPRunEngineInitScript(tTJS*);
 	TVPRunEngineInitScript(tjs);

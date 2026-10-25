@@ -1208,6 +1208,12 @@ void TVPShowScriptException(eTJS &e)
 {
 	// first, before anything the engine does on error can end the process
 	fprintf(stderr, "[script] %ls\n", (const wchar_t*)e.GetMessage().c_str());
+	if(TJSStackTracerEnabled())
+	{
+		ttstr stack = TJSGetStackTraceString();
+		if(!stack.IsEmpty())
+			fprintf(stderr, "[script] tjs stack:\n%ls\n", (const wchar_t*)stack.c_str());
+	}
 	fflush(stderr);
 	TVPSetSystemEventDisabledState(true);
 	TVPOnError();
@@ -1228,6 +1234,12 @@ void TVPShowScriptException(eTJSScriptError &e)
 	fprintf(stderr, "[script] %ls\n", (const wchar_t*)e.GetMessage().c_str());
 	if(e.GetTrace().GetLen() != 0)
 		fprintf(stderr, "[script] trace: %ls\n", (const wchar_t*)e.GetTrace().c_str());
+	if(TJSStackTracerEnabled())
+	{
+		ttstr stack = TJSGetStackTraceString();
+		if(!stack.IsEmpty())
+			fprintf(stderr, "[script] tjs stack:\n%ls\n", (const wchar_t*)stack.c_str());
+	}
 	fflush(stderr);
 	TVPSetSystemEventDisabledState(true);
 	TVPOnError();
