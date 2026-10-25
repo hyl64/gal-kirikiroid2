@@ -380,6 +380,12 @@ tTJSNI_BaseLayer * tTVPLayerManager::GetMostFrontChildAt(tjs_int x, tjs_int y,
 void tTVPLayerManager::PrimaryClick(tjs_int x, tjs_int y)
 {
 	tTJSNI_BaseLayer * l = GetMostFrontChildAt(x, y);
+	if(getenv("KRKR_DEBUG_INPUT"))
+	{
+		fprintf(stderr, "[click] at %d,%d front=%p capture=%p match=%d\n", (int)x, (int)y,
+			(void*)l, (void*)CaptureOwner, (int)(l != nullptr && CaptureOwner == l));
+		fflush(stderr);
+	}
 	if(l && CaptureOwner == l)
 	{
 		l->FromPrimaryCoordinates(x, y);
@@ -406,6 +412,12 @@ void tTVPLayerManager::PrimaryMouseDown(tjs_int x, tjs_int y, tTVPMouseButton mb
 	{
 		l->FromPrimaryCoordinates(x, y);
 		ReleaseCaptureCalled = false;
+		if(getenv("KRKR_DEBUG_INPUT"))
+		{
+			fprintf(stderr, "[click] down on layer %p at %d,%d size %d,%d\n", (void*)l,
+				(int)l->GetLeft(), (int)l->GetTop(), (int)l->GetWidth(), (int)l->GetHeight());
+			fflush(stderr);
+		}
 		l->FireMouseDown(x, y, mb, flags);
 		bool no_capture = ReleaseCaptureCalled;
 
@@ -432,6 +444,11 @@ void tTVPLayerManager::PrimaryMouseDown(tjs_int x, tjs_int y, tTVPMouseButton mb
 void tTVPLayerManager::PrimaryMouseUp(tjs_int x, tjs_int y, tTVPMouseButton mb,
 	tjs_uint32 flags)
 {
+	if(getenv("KRKR_DEBUG_INPUT"))
+	{
+		fprintf(stderr, "[click] up, capture=%p\n", (void*)CaptureOwner);
+		fflush(stderr);
+	}
 	tTJSNI_BaseLayer *l;
 
 	if(CaptureOwner)
