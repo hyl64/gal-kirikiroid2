@@ -32,7 +32,11 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
+#include <libswresample/swresample.h>
+#include <libavutil/channel_layout.h>
 }
+
+#include <SDL2/SDL_mixer.h>
 
 #include <cstring>
 #include <vector>
@@ -120,6 +124,11 @@ namespace
 		// collected underneath a playing movie
 		tTJSVariantClosure WindowRef;
 
+		// ---- the movie's audio track, decoded to the mixer's format
+		std::vector<int16_t> Audio;   // 44100 Hz, stereo, signed 16
+		int AudioChannel = -1;
+		Mix_Chunk AudioChunk;
+
 		// the texture the current frame is uploaded to
 		tTVPBaseTexture *Surface = nullptr;
 		int SurfaceW = 0, SurfaceH = 0;
@@ -148,6 +157,9 @@ namespace
 			Position = 0.0;
 			TotalTime = 0.0;
 			Visible = false;
+			HaltAudio();
+			Audio.clear();
+			Audio.shrink_to_fit();
 			delete Surface; Surface = nullptr; SurfaceW = SurfaceH = 0;
 			if(OutScaler) { sws_freeContext(OutScaler); OutScaler = nullptr; }
 			if(OutBuf) { av_freep(&OutBuf); }
@@ -240,6 +252,8 @@ namespace
 				if(Format->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)
 					NumberOfAudioStream++;
 
+			DecodeAudio();
+
 			// first frame, so a paused movie shows something
 			if(DecodeOne())
 			{
@@ -249,6 +263,140 @@ namespace
 			}
 			Visible = true;
 			return true;
+		}
+
+		// ---- audio: decode the whole track to the mixer's own format --------
+		void HaltAudio()
+		{
+			if(AudioChannel >= 0)
+			{
+				Mix_HaltChannel(AudioChannel);
+				AudioChannel = -1;
+			}
+		}
+
+		// the mixer is shared with the wave buffers; open it if a movie is the
+		// first thing to make a sound
+		static bool EnsureMixerOpen()
+		{
+			static bool opened = false;
+			static bool ok = false;
+			if(!opened)
+			{
+				opened = true;
+				ok = Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) == 0;
+				if(ok) Mix_AllocateChannels(16);
+			}
+			return ok;
+		}
+
+		void StartAudio()
+		{
+			if(Audio.empty()) return;
+			if(!EnsureMixerOpen()) return;
+			HaltAudio();
+			// SDL_mixer plays a Mix_Chunk that points at our PCM; `allocated` stays
+			// 0 so freeing the chunk never touches the buffer we own
+			AudioChunk.allocated = 0;
+			AudioChunk.abuf = (Uint8*)Audio.data();
+			AudioChunk.alen = (Uint32)(Audio.size() * sizeof(int16_t));
+			AudioChunk.volume = MIX_MAX_VOLUME;
+			AudioChannel = Mix_PlayChannel(-1, &AudioChunk, Looping ? -1 : 0);
+			if(getenv("KRKR_DEBUG_VIDEO"))
+			{
+				fprintf(stderr, "[video] audio play: channel=%d bytes=%u mixer=%d\n",
+					AudioChannel, (unsigned)AudioChunk.alen, (int)Mix_QuerySpec(nullptr, nullptr, nullptr));
+				fflush(stderr);
+			}
+		}
+
+		void DecodeAudio()
+		{
+			Audio.clear();
+			const int stream = av_find_best_stream(Format, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+			if(stream < 0) return;
+			const AVCodec *codec = avcodec_find_decoder(Format->streams[stream]->codecpar->codec_id);
+			if(codec == nullptr) return;
+			AVCodecContext *dec = avcodec_alloc_context3(codec);
+			if(dec == nullptr) return;
+			if(avcodec_parameters_to_context(dec, Format->streams[stream]->codecpar) < 0)
+			{
+				avcodec_free_context(&dec);
+				return;
+			}
+			if(avcodec_open2(dec, codec, nullptr) < 0)
+			{
+				avcodec_free_context(&dec);
+				return;
+			}
+
+			AVChannelLayout outLayout = AV_CHANNEL_LAYOUT_STEREO;
+			SwrContext *swr = nullptr;
+			if(swr_alloc_set_opts2(&swr, &outLayout, AV_SAMPLE_FMT_S16, 44100,
+				&dec->ch_layout, dec->sample_fmt, dec->sample_rate, 0, nullptr) < 0 || swr == nullptr)
+			{
+				avcodec_free_context(&dec);
+				return;
+			}
+			if(swr_init(swr) < 0)
+			{
+				swr_free(&swr);
+				avcodec_free_context(&dec);
+				return;
+			}
+
+			// restart the demuxer: the video stream was already read to its end
+			av_seek_frame(Format, StreamIndex, 0, AVSEEK_FLAG_BACKWARD);
+			if(Decoder) avcodec_flush_buffers(Decoder);
+			Reader.Pos = 0;
+			HasPending = false;
+
+			AVPacket *packet = av_packet_alloc();
+			AVFrame *frame = av_frame_alloc();
+			std::vector<int16_t> out(8192 * 2);
+			while(packet && frame && av_read_frame(Format, packet) >= 0)
+			{
+				if(packet->stream_index == stream)
+				{
+					if(avcodec_send_packet(dec, packet) >= 0)
+					{
+						while(avcodec_receive_frame(dec, frame) >= 0)
+						{
+							const int maxOut = (int)(out.size() / 2);
+							// swr_convert wants an array of plane pointers, not a
+							// pointer to the sample buffer
+							uint8_t *outPlane[1] = { (uint8_t*)out.data() };
+							const int got = swr_convert(swr, outPlane, maxOut,
+								(const uint8_t**)frame->extended_data, frame->nb_samples);
+							if(got > 0)
+								Audio.insert(Audio.end(), out.begin(), out.begin() + got * 2);
+						}
+					}
+				}
+				av_packet_unref(packet);
+			}
+			// flush the resampler
+			uint8_t *flushPlane[1] = { (uint8_t*)out.data() };
+			const int got = swr_convert(swr, flushPlane, (int)(out.size() / 2), nullptr, 0);
+			if(got > 0)
+				Audio.insert(Audio.end(), out.begin(), out.begin() + got * 2);
+
+			if(packet) av_packet_free(&packet);
+			if(frame) av_frame_free(&frame);
+			swr_free(&swr);
+			avcodec_free_context(&dec);
+
+			if(getenv("KRKR_DEBUG_VIDEO"))
+			{
+				fprintf(stderr, "[video] audio: %d sample(s) of stereo s16 at 44100\n",
+					(int)Audio.size());
+				fflush(stderr);
+			}
+			// put the video back at the start for playback
+			av_seek_frame(Format, StreamIndex, 0, AVSEEK_FLAG_BACKWARD);
+			if(Decoder) avcodec_flush_buffers(Decoder);
+			Reader.Pos = 0;
+			HasPending = false;
 		}
 
 		void Rewind()
@@ -269,6 +417,8 @@ namespace
 				StartTick = SDL_GetTicks64() - (Uint64)(PausedAt * 1000.0);
 				Playing = true;
 				Visible = true;
+				if(AudioChannel >= 0) Mix_Resume(AudioChannel);
+				else StartAudio();
 			}
 		}
 
@@ -277,6 +427,7 @@ namespace
 			Playing = false;
 			PausedAt = 0.0;
 			Position = 0.0;
+			HaltAudio();
 		}
 
 		void Pause()
@@ -285,6 +436,7 @@ namespace
 			{
 				PausedAt = Position;
 				Playing = false;
+				if(AudioChannel >= 0) Mix_Pause(AudioChannel);
 			}
 		}
 
