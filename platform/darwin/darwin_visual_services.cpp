@@ -174,7 +174,13 @@ ttstr TVPGetAppPath()
 // no window is up in a tool, and no asynchronous work is running to stop
 void TVPTerminateSync(int code)
 {
-	(void)code;
+	// The engine's error path (TVPShowScriptException) and System.exit() both
+	// end here and expect the process to actually stop.  A silent no-op turned
+	// every script exception into a zombie that kept looping with events
+	// disabled, which is why a broken run never told us it was broken.
+	fflush(stdout);
+	fflush(stderr);
+	_exit(code);
 }
 
 
