@@ -77,7 +77,9 @@ add_library(krkr STATIC
 	${CORE}/visual/win32/BitmapInfomation.cpp ${CORE}/visual/win32/BitmapBitsAlloc.cpp
 	${CORE}/msg/MsgIntf.cpp
 	${UTILS_SRC} ${UTILS_ENC} ${CORE}/utils/md5.c
-	${CORE}/utils/win32/ThreadImpl.cpp ${CORE}/utils/win32/TimerImpl.cpp
+	${CORE}/utils/win32/ThreadImpl.cpp
+	# TimerImpl.cpp is the Windows TJS Timer class; darwin/Timer_Darwin.cpp is the one
+	# this back end registers, and two definitions of it would fight over the name
 	${CORE}/utils/win32/TVPTimer.cpp ${CORE}/utils/win32/DebugImpl.cpp
 	# ---- the software renderer and the pixel pipeline
 	${CORE}/visual/tvpgl.cpp ${CORE}/visual/gl/blend_function.cpp ${CORE}/visual/argb.cpp

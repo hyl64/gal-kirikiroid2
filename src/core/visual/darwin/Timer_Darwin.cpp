@@ -225,6 +225,12 @@ void TVPDarwinTickTimers()
 	 * gRunning: an iterator walking it would be invalidated mid-loop.  The handlers
 	 * that are due are copied out first - a tTJSVariant copy holds its own
 	 * reference - and called once the list has been updated. */
+	static int ticks;
+	if(getenv("KRKR_DEBUG_TIMER") && (ticks++ % 30) == 0)
+	{
+		fprintf(stderr, "[timer] tick, %zu registered\n", gRunning.size());
+		fflush(stderr);
+	}
 	std::vector<tTJSVariant> due;
 	const auto now = clock::now();
 	for(auto& t : gRunning)

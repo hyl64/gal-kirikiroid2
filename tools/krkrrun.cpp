@@ -283,45 +283,38 @@ int main(int argc, char** argv)
 			const Uint64 start = SDL_GetTicks64();
 			while((double)(SDL_GetTicks64() - start) < limit)
 			{
+				TVPDarwinTickTimers();
+				// the framework's own events (AsyncTrigger and friends) are queued
+				// and dispatched here
+				extern void TVPInvokeEvents();
+				TVPInvokeEvents();
+				if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
 				{
-					static unsigned frames;
-					if(getenv("KRKR_DEBUG_INPUT") && (frames++ % 60) == 0)
-					{
-						fprintf(stderr, "[input] frame %u, %llu ms\n", frames,
-							(unsigned long long)(SDL_GetTicks64() - start));
-						fflush(stderr);
-					}
+					device->Update();
+					device->Show();
 				}
-				/* KRKR_AUTO_CLICK="x,y,ms": click once, that many milliseconds
-				 * in.  A headless host has no mouse, and a title screen sits
+				SDL_Event e;
+				while(SDL_PollEvent(&e))
+				{
+					if(e.type == SDL_QUIT)
+						break;
+				}
+
+				/* KRKR_AUTO_CLICK="x,y,from_ms": click a few times from that
+				 * moment on.  A headless host has no mouse, and a title screen sits
 				 * waiting for one. */
 				if(const char* click = getenv("KRKR_AUTO_CLICK"))
 				{
-					/* "x,y,from_ms": click at from_ms and then every two seconds, five
-					 * times.  A title screen is ready at a time that varies with how
-					 * warm the file cache is, and one click at a fixed moment keeps
-					 * arriving too early; a few of them do not. */
 					static int clicks;
-					static int shown;
-					// count presented frames: the title is clickable only once the
-					// engine has drawn it, and wall time says nothing about that
-					if(iTVPDrawDevice* d = TVPGetLastDrawDeviceDarwin())
-						shown++;
-					const long from = atol(strrchr(click, ',') ? strrchr(click, ',') + 1 : "0");
+					const long from = atol(strchr(click, ',') ? strrchr(click, ',') + 1 : "0");
 					const long long now = (long long)(SDL_GetTicks64() - start);
-					const bool byFrames = false;   // milliseconds, always
-					if(clicks < 5 && (byFrames ? shown >= (int)from + clicks * 300
-						: now >= from + (long long)clicks * 3000))
+					if(clicks < 5 && now >= from + (long long)clicks * 3000)
 					{
 						int x = 0, y = 0;
 						sscanf(click, "%d,%d", &x, &y);
 						if(getenv("KRKR_DEBUG_INPUT"))
 						{
-							time_t wall = time(nullptr);
-							struct tm tmv;
-							localtime_r(&wall, &tmv);
-							fprintf(stderr, "[input] click %d at %lld ms, wall %02d:%02d:%02d\n",
-								clicks + 1, now, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
+							fprintf(stderr, "[input] click %d at %lld ms\n", clicks + 1, now);
 							fflush(stderr);
 						}
 						if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
