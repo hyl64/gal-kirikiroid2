@@ -1133,6 +1133,26 @@ void tTVPLayerManager::PrimaryClick(tjs_int x, tjs_int y)
 是按钮层（说明之后的 `FireClick` 没到 KAG），还是别的层（说明命中测试有问题）。
 注意 KAG 的按钮是 `ButtonLayer` 的 `onClick` 覆写（`system/ButtonLayer.tjs:169`）。
 
+### 31. 命中测试的结果：点击落在**基础层**，不是按钮
+
+在 `tTVPLayerManager` 里加了三个探针（down / click / up + 几何信息）：
+
+```
+[click] down on layer 0x…680 at 16,16 size 1240,680
+[click] at 1100,430 front=0x…680 capture=0x…680 match=1
+[click] up, capture=0x…680
+```
+
+**三个事件都到了同一层**，看似成功——但那一层是 **(16,16) / 1240×680**，
+即**整屏大小的基础层**，不是按钮。
+
+**所以问题在命中测试**：该点上「最前面的图层」不是画在那里的东西。
+KAG 的按钮是消息层的子层，而剧本里写着 `[position layer=message opacity=0]` ——
+很可能是「不透明度 0 的图层」被命中测试跳过了。
+
+**下一步**：查 `tTJSNI_BaseLayer::GetMostFrontChildAt` 的可见性/透明度判断，
+确认它是否该跳过 opacity=0 的层（KAG 依赖这些层接收点击）。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
