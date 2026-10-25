@@ -39,6 +39,7 @@
 #include <SDL.h>
 
 #include <cstdio>
+#include <ctime>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -316,7 +317,11 @@ int main(int argc, char** argv)
 						sscanf(click, "%d,%d", &x, &y);
 						if(getenv("KRKR_DEBUG_INPUT"))
 						{
-							fprintf(stderr, "[input] click %d at %lld ms\n", clicks + 1, now);
+							time_t wall = time(nullptr);
+							struct tm tmv;
+							localtime_r(&wall, &tmv);
+							fprintf(stderr, "[input] click %d at %lld ms, wall %02d:%02d:%02d\n",
+								clicks + 1, now, tmv.tm_hour, tmv.tm_min, tmv.tm_sec);
 							fflush(stderr);
 						}
 						if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
