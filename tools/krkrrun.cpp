@@ -338,6 +338,10 @@ int main(int argc, char** argv)
 							{
 								// real window order: down, up, then the
 								// synthesized click; a button acts on mouse-up
+								/* KAG ignores a click that lands without pointer motion
+								 * (its anti-misclick guard), so move first */
+								device->OnMouseMove(x + 1, y + 1, 0);
+								device->OnMouseMove(x, y, 0);
 								device->OnMouseDown(x, y, mbLeft, 0);
 								device->OnMouseUp(x, y, mbLeft, 0);
 								device->OnClick(x, y);
@@ -378,6 +382,10 @@ int main(int argc, char** argv)
 							{
 								// real window order: down, up, then the
 								// synthesized click; a button acts on mouse-up
+								/* KAG ignores a click that lands without pointer motion
+								 * (its anti-misclick guard), so move first */
+								device->OnMouseMove(x + 1, y + 1, 0);
+								device->OnMouseMove(x, y, 0);
 								device->OnMouseDown(x, y, mbLeft, 0);
 								device->OnMouseUp(x, y, mbLeft, 0);
 								device->OnClick(x, y);

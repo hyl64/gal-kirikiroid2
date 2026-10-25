@@ -238,6 +238,24 @@ bool tTVPBaseBitmap::Fill(tTVPRect rect, tjs_uint32 value)
 	// value must be : 0xAARRGGBB (for 32bpp) or 0xII ( for 8bpp )
 	BOUND_CHECK(false);
 
+	if(!Is32BPP())
+	{
+		// An 8bpp surface is a province (hit-area) map: one byte per pixel, no
+		// colour.  The render-manager FillARGB below writes 32bpp pixels and
+		// silently missed these surfaces, which left every [link] hot area at
+		// zero.  Write the byte directly instead.
+		const tjs_uint8 v = (tjs_uint8)(value & 0xff);
+		const tjs_int w = rect.right - rect.left;
+		if(w <= 0) return false;
+		for(tjs_int y = rect.top; y < rect.bottom; y++)
+		{
+			tjs_uint8 *line = (tjs_uint8*)GetScanLineForWrite(y);
+			if(line == nullptr) continue;
+			memset(line + rect.left, v, (size_t)w);
+		}
+		return true;
+	}
+
 	if (Is32BPP()) value = TVP_REVRGB(value);
 #if 0 // use GetTextureForRender instead
 	if(!IsIndependent())

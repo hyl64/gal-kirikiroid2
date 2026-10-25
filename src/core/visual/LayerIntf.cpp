@@ -2129,6 +2129,39 @@ void tTJSNI_BaseLayer::DeallocateImage()
 	ImageModified = true;
 }
 //---------------------------------------------------------------------------
+// A province surface holds a small hit-area number per pixel.  On this back end
+// the bitmap is allocated 32bpp regardless of the requested depth, and the
+// render-manager Fill path writes a texture the CPU-side reader never sees, so
+// province pixels are read and written through scan lines directly.
+static void ProvinceFillRect(iTVPBaseBitmap *img, const tTVPRect &r, tjs_uint8 v)
+{
+	if(img == nullptr) return;
+	const bool wide = img->Is32BPP();
+	for(tjs_int y = r.top; y < r.bottom; y++)
+	{
+		tjs_uint8 *line = (tjs_uint8*)img->GetScanLineForWrite(y);
+		if(line == nullptr) continue;
+		if(wide)
+		{
+			tjs_uint32 *p = (tjs_uint32*)line + r.left;
+			for(tjs_int x = r.left; x < r.right; x++) *p++ = (tjs_uint32)v;
+		}
+		else
+		{
+			memset(line + r.left, v, (size_t)(r.right - r.left));
+		}
+	}
+}
+
+static tjs_uint32 ProvinceReadPixel(const iTVPBaseBitmap *img, tjs_int x, tjs_int y)
+{
+	if(img == nullptr) return 0;
+	const tjs_uint8 *line = (const tjs_uint8*)img->GetScanLine(y);
+	if(line == nullptr) return 0;
+	if(img->Is32BPP()) return ((const tjs_uint32*)line)[x] & 0xff;
+	return line[x];
+}
+
 void tTJSNI_BaseLayer::AllocateProvinceImage()
 {
 	tjs_uint neww = MainImage?MainImage->GetWidth():Rect.get_width();
@@ -2697,12 +2730,18 @@ tjs_int tTJSNI_BaseLayer::GetProvincePixel(tjs_int x, tjs_int y) const
 	if(x < 0 || y < 0 || x >= (tjs_int)ProvinceImage->GetWidth() ||
 		y >= (tjs_int)ProvinceImage->GetHeight()) return 0;
 
-	return ProvinceImage->GetPoint(x, y);
+	return (tjs_int)ProvinceReadPixel(ProvinceImage, x, y);
 }
 //---------------------------------------------------------------------------
 void tTJSNI_BaseLayer::SetProvincePixel(tjs_int x, tjs_int y, tjs_int n)
 {
 	if(!ProvinceImage) AllocateProvinceImage();
+	if(ProvinceImage)
+	{
+		tTVPRect one(x, y, x + 1, y + 1);
+		ProvinceFillRect(ProvinceImage, one, (tjs_uint8)(n & 0xff));
+		return;
+	}
 
 	if(x < ClipRect.left || y < ClipRect.top ||
 		x >= ClipRect.right || y >= ClipRect.bottom) return; // out of clipping rectangle
@@ -3965,7 +4004,10 @@ void tTJSNI_BaseLayer::FillRect(const tTVPRect &rect, tjs_uint32 color)
 		{
 			if(!ProvinceImage) AllocateProvinceImage();
 			if(ProvinceImage)
-				ImageModified = ProvinceImage->Fill(destrect, color&0xff) || ImageModified;
+			{
+				ProvinceFillRect(ProvinceImage, destrect, (tjs_uint8)color);
+				ImageModified = true;
+			}
 		}
 		else
 		{
@@ -4053,7 +4095,10 @@ void tTJSNI_BaseLayer::ColorRect(const tTVPRect &rect, tjs_uint32 color, tjs_int
 		{
 			if(!ProvinceImage) AllocateProvinceImage();
 			if(ProvinceImage)
-				ImageModified = ProvinceImage->Fill(destrect, color&0xff) || ImageModified;
+			{
+				ProvinceFillRect(ProvinceImage, destrect, (tjs_uint8)color);
+				ImageModified = true;
+			}
 		}
 		else
 		{

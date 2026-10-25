@@ -96,5 +96,27 @@ note "clicks delivered: ${clicks:-0}"
 strings "$TMP/walk.log" | grep -aq "first.ks : @s" \
 	|| { note "MISSING: the menu's @s stop was never reached"; fail=1; }
 
+# 3. the hyperlink menu: a click on the text must select the link and run the
+#    section it points at (this is what province hit areas are for)
+(
+	cd "$GAME"
+	KRKR_LOOP_SECONDS=25 SDL_VIDEODRIVER=dummy KRKR_DEBUG_INPUT=1 \
+		KRKR_AUTO_CLICK="320,145,9000" \
+		"$KRKRRUN" startup.tjs --screenshot "$TMP/section.bmp" >"$TMP/link.log" 2>&1
+) || { note "FAILED: link run exited non-zero"; fail=1; }
+
+if strings "$TMP/link.log" | grep -aq "jumped to : \*about_kirikiri"; then
+	note "link: the menu click select the first entry and entered its section"
+else
+	note "FAILED: a click on the menu text did not enter the linked section"
+	fail=1
+fi
+strings "$TMP/link.log" | grep -aq "changebg_and_clear storage=" \
+	|| { note "MISSING: the section did not run its background change"; fail=1; }
+if strings "$TMP/link.log" | grep -aq "Script exception raised\|already invalidated"; then
+	note "FAILED: the link run raised a script exception"
+	fail=1
+fi
+
 [ "$fail" = "0" ] && echo "PASS: the second real game boots, renders and survives the click path" \
 	|| { echo "FAIL"; exit 1; }
