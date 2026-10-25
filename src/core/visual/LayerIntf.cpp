@@ -2927,6 +2927,16 @@ bool tTJSNI_BaseLayer::_HitTestNoVisibleCheck(tjs_int x, tjs_int y)
 {
 	// do hit test.
 	// this function does not check layer's visiblity
+	if(getenv("KRKR_DEBUG_HITTEST") && Rect.get_width() < 400)
+	{
+		fprintf(stderr, "[hit] rect %d,%d %dx%d at %d,%d hit=%d thr=%d img=%d,%d %ldx%ld\n",
+			(int)Rect.left, (int)Rect.top, (int)Rect.get_width(), (int)Rect.get_height(),
+			(int)x, (int)y, (int)HitType, (int)HitThreshold,
+			(int)ImageLeft, (int)ImageTop,
+			MainImage ? (long)MainImage->GetWidth() : -1L,
+			MainImage ? (long)MainImage->GetHeight() : -1L);
+		fflush(stderr);
+	}
 
 	if(HitType == htMask)
 	{
