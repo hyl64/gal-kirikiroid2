@@ -282,6 +282,49 @@ int main(int argc, char** argv)
 			const Uint64 start = SDL_GetTicks64();
 			while((double)(SDL_GetTicks64() - start) < limit)
 			{
+				{
+					static unsigned frames;
+					if(getenv("KRKR_DEBUG_INPUT") && (frames++ % 60) == 0)
+					{
+						fprintf(stderr, "[input] frame %u, %llu ms\n", frames,
+							(unsigned long long)(SDL_GetTicks64() - start));
+						fflush(stderr);
+					}
+				}
+				/* KRKR_AUTO_CLICK="x,y,ms": click once, that many milliseconds
+				 * in.  A headless host has no mouse, and a title screen sits
+				 * waiting for one. */
+				if(const char* click = getenv("KRKR_AUTO_CLICK"))
+				{
+					static int done = 0;
+					if(getenv("KRKR_DEBUG_INPUT") && !done)
+						fprintf(stderr, "[input] waiting: %llu ms elapsed, click at %s\n",
+							(unsigned long long)(SDL_GetTicks64() - start), click);
+					if(!done && (Uint64)atof(strchr(click, ',') ? strrchr(click, ',') + 1 : "0") <= SDL_GetTicks64() - start)
+					{
+						int x = 0, y = 0;
+						sscanf(click, "%d,%d", &x, &y);
+						if(getenv("KRKR_DEBUG_INPUT"))
+						{
+							fprintf(stderr, "[input] clicking %d,%d\n", x, y);
+							fflush(stderr);
+						}
+						if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
+							if(tTJSNI_BaseLayer* primary = device->GetPrimaryLayer())
+								if(iTVPLayerManager* manager = primary->GetManager())
+								{
+									manager->NotifyMouseDown(x, y, mbLeft, 0);
+									manager->NotifyMouseUp(x, y, mbLeft, 0);
+									manager->NotifyClick(x, y);
+								}
+						done = 1;
+						if(getenv("KRKR_DEBUG_INPUT"))
+						{
+							fprintf(stderr, "[input] clicked %d,%d\n", x, y);
+							fflush(stderr);
+						}
+					}
+				}
 				TVPDarwinTickTimers();
 				// the framework's own events (AsyncTrigger and friends) are queued
 				// and dispatched here
@@ -297,31 +340,6 @@ int main(int argc, char** argv)
 				{
 					if(e.type == SDL_QUIT)
 						break;
-				}
-				/* KRKR_AUTO_CLICK="x,y,ms": click once, that many milliseconds
-				 * in.  A headless host has no mouse, and a title screen sits
-				 * waiting for one. */
-				if(const char* click = getenv("KRKR_AUTO_CLICK"))
-				{
-					static int done = 0;
-					if(getenv("KRKR_DEBUG_INPUT") && !done)
-						fprintf(stderr, "[input] waiting: %llu ms elapsed, click at %s\n",
-							(unsigned long long)(SDL_GetTicks64() - start), click);
-					if(!done && (Uint64)atof(strchr(click, ',') ? strrchr(click, ',') + 1 : "0") <= SDL_GetTicks64() - start)
-					{
-						int x = 0, y = 0;
-						sscanf(click, "%d,%d", &x, &y);
-						if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
-							if(tTJSNI_BaseLayer* primary = device->GetPrimaryLayer())
-								if(iTVPLayerManager* manager = primary->GetManager())
-									manager->NotifyClick(x, y);
-						done = 1;
-						if(getenv("KRKR_DEBUG_INPUT"))
-						{
-							fprintf(stderr, "[input] clicked %d,%d\n", x, y);
-							fflush(stderr);
-						}
-					}
 				}
 				SDL_Delay(16);
 			}
