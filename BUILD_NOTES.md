@@ -956,6 +956,22 @@ wrote /tmp/kag_final2.bmp (640x480, presented frame)     帧内 231 种颜色
 
 **脚本 → 框架 → 消息层 → 图层树 → 合成 → 设备 → 屏幕**，全链路在 arm64 原生构建上跑通。
 
+### 24. 尝试「直接从 data.xp3 启动」——未成功，已回退
+
+真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
+`startup.tjs`」是必要能力。本轮的尝试：
+
+1. 用 `tests/make_xp3.py` 把 KAG3 工程（30 个文件：`startup.tjs` + `system/` + `scenario/`）
+   打成 `testdata/kag3.xp3` ✓
+2. `krkrpack list` 能读它：`30 file(s) in file:///…/kag3.xp3` ✓
+3. 给 `krkrrun` 加「参数是 .xp3 时：realpath → TVPAddAutoPath → 执行
+   `Scripts.execStorage("startup.tjs")`」的分支 —— **运行后无任何输出、exit 1**
+
+**已 `git checkout` 回退**，构建与既有功能全部恢复（`krkrblit` 全过、minikag 三行正常）。
+
+**已知**：XP3 读取本身是好的（`krkrpack` 往返一致、`Storages.isExistentStorage("file://a.xp3>dir/c.bin")` 早前验证过），
+所以问题在「把归档挂进自动路径 + 从里面 exec」这一段，需要单独调试。
+
 ### 23. 管理器集成完成 ✅（`gal verify kag3-sample` → 可以运行）
 
 **最后一道差异是测试数据的布局，不是启动器**：KAG 的脚本用**不带目录的名字**互相引用
