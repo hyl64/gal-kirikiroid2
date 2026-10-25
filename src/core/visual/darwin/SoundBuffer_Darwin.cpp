@@ -94,6 +94,9 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 	WAVE_SIMPLE(/*func. name*/ stop, _this->Playing = false;)
 	WAVE_SIMPLE(/*func. name*/ pause, _this->Playing = false;)
 	WAVE_SIMPLE(/*func. name*/ fade, (void)numparams; (void)param;)
+	/* a fade that is cancelled: with no mixer of its own this back end stops the
+	 * sound at once, which is what the caller is asking to happen */
+	WAVE_SIMPLE(/*func. name*/ stopFade, _this->Playing = false;)
 #undef WAVE_SIMPLE
 
 #define WAVE_INT_PROP(name, field)                                             \
@@ -119,6 +122,24 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 	WAVE_INT_PROP(volume, Volume)
 	WAVE_INT_PROP(pan, Pan)
 #undef WAVE_INT_PROP
+
+	/* 0 stopped, 1 playing, 2 paused - the three states a script asks about */
+	TJS_BEGIN_NATIVE_PROP_DECL(status)
+	{
+		TJS_BEGIN_NATIVE_PROP_GETTER
+		{
+			TJS_GET_NATIVE_INSTANCE(_this, WaveInstance);
+			*result = _this->Playing ? (tjs_int)(_this->Paused ? 2 : 1) : 0;
+			return TJS_S_OK;
+		}
+		TJS_END_NATIVE_PROP_GETTER
+		TJS_BEGIN_NATIVE_PROP_SETTER
+		{
+			return TJS_E_NOTIMPL;
+		}
+		TJS_END_NATIVE_PROP_SETTER
+	}
+	TJS_END_NATIVE_PROP_DECL(status)
 
 	TJS_BEGIN_NATIVE_PROP_DECL(playing)
 	{
