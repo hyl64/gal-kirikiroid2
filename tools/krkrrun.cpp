@@ -171,6 +171,8 @@ static void OnFatalSignal(int sig)
 	_exit(128 + sig);
 }
 
+static unsigned long long gFramesRendered = 0;
+
 int main(int argc, char** argv)
 {
 	atexit(OnExitTrace);
@@ -413,6 +415,7 @@ int main(int argc, char** argv)
 			extern iTVPDrawDevice* TVPGetLastDrawDeviceDarwin();
 			const double limit = atof(seconds) * 1000.0;
 			const Uint64 start = SDL_GetTicks64();
+			Uint64 frameStart = start;
 			while((double)(SDL_GetTicks64() - start) < limit)
 			{
 				TVPDarwinTickTimers();
@@ -431,6 +434,7 @@ int main(int argc, char** argv)
 					// over the composed frame: it paints the primary layer, which
 					// Update() would otherwise overwrite
 					device->Update();
+					gFramesRendered++;
 					extern void TVPDarwinTickVideo();
 					TVPDarwinTickVideo();
 					device->Show();
@@ -441,6 +445,13 @@ int main(int argc, char** argv)
 					if(e.type == SDL_QUIT)
 						break;
 				}
+
+				// Sleep only the time left in this frame: a flat SDL_Delay(16)
+				// on top of the work pushed the loop under 60 fps.
+				const Uint64 frameEnd = frameStart + 16;
+				const Uint64 now = SDL_GetTicks64();
+				if(now < frameEnd) SDL_Delay((Uint32)(frameEnd - now));
+				frameStart = frameEnd > now ? frameEnd : now;
 
 				/* KRKR_AUTO_CLICK="x,y,from_ms": click a few times from that
 				 * moment on.  A headless host has no mouse, and a title screen sits
@@ -559,10 +570,17 @@ int main(int argc, char** argv)
 						clicks2++;
 					}
 				}
-				SDL_Delay(16);
 			}
 		}
-		// an optional frame, taken after the script has run
+		if(getenv("KRKR_STATS") != nullptr)
+	{
+		const double secs = atof(getenv("KRKR_LOOP_SECONDS") ? getenv("KRKR_LOOP_SECONDS") : "0");
+		fprintf(stderr, "[stats] frames=%llu seconds=%.2f fps=%.1f\n",
+			gFramesRendered, secs, secs > 0.0 ? (double)gFramesRendered / secs : 0.0);
+		fflush(stderr);
+	}
+
+	// an optional frame, taken after the script has run
 		if(argc >= 4 && strcmp(argv[2], "--screenshot") == 0)
 		{
 			fflush(stdout);
