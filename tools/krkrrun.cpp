@@ -310,13 +310,14 @@ int main(int argc, char** argv)
 							fflush(stderr);
 						}
 						if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
-							if(tTJSNI_BaseLayer* primary = device->GetPrimaryLayer())
-								if(iTVPLayerManager* manager = primary->GetManager())
-								{
-									manager->NotifyMouseDown(x, y, mbLeft, 0);
-									manager->NotifyMouseUp(x, y, mbLeft, 0);
-									manager->NotifyClick(x, y);
-								}
+						{
+							/* the device's own entry point: it maps window
+							 * coordinates onto the primary layer first, which is
+							 * what a real mouse goes through */
+							device->OnMouseDown(x, y, mbLeft, 0);
+							device->OnClick(x, y);
+							device->OnMouseUp(x, y, mbLeft, 0);
+						}
 						done = 1;
 						if(getenv("KRKR_DEBUG_INPUT"))
 						{
