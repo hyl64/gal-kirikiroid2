@@ -48,12 +48,6 @@ static void UnsupportedFormat(const char* name)
 		ttstr(TJS_W("the macOS back end has no decoder for ")) + ttstr(name));
 }
 
-void TVPLoadJPEG(void*, void*, tTVPGraphicSizeCallback, tTVPGraphicScanLineCallback,
-	tTVPMetaInfoPushCallback, tTJSBinaryStream*, tjs_int, tTVPGraphicLoadMode)
-{
-	UnsupportedFormat("JPEG");
-}
-
 void TVPLoadJXR(void*, void*, tTVPGraphicSizeCallback, tTVPGraphicScanLineCallback,
 	tTVPMetaInfoPushCallback, tTJSBinaryStream*, tjs_int, tTVPGraphicLoadMode)
 {
@@ -88,11 +82,6 @@ void TVPLoadHeaderBPG(void*, tTJSBinaryStream*, iTJSDispatch2**)
 	UnsupportedFormat("BPG");
 }
 
-void TVPSaveAsJPG(void*, tTJSBinaryStream*, const iTVPBaseBitmap*, const ttstr&, iTJSDispatch2*)
-{
-	UnsupportedFormat("JPEG");
-}
-
 void TVPSaveAsJXR(void*, tTJSBinaryStream*, const iTVPBaseBitmap*, const ttstr&, iTJSDispatch2*)
 {
 	UnsupportedFormat("JPEG XR");
@@ -103,24 +92,22 @@ void TVPSaveAsTLG(void*, tTJSBinaryStream*, const iTVPBaseBitmap*, const ttstr&,
 	UnsupportedFormat("TLG");
 }
 
-void TVPLoadHeaderJPG(void*, tTJSBinaryStream*, iTJSDispatch2**)
-{
-	UnsupportedFormat("JPEG");
-}
-
 void TVPLoadHeaderJXR(void*, tTJSBinaryStream*, iTJSDispatch2**)
 {
 	UnsupportedFormat("JPEG XR");
 }
 
-void TVPLoadHeaderWEBP(void*, tTJSBinaryStream*, iTJSDispatch2**)
+void TVPLoadHeaderWEBP(void*, tTJSBinaryStream* src, iTJSDispatch2**)
 {
+	// this is a probe, not a load: it must stay quiet about a picture that is not
+	// its own, or it hides every format registered after it
+	uint8_t magic[4] = {0};
+	const tjs_uint64 at = src->GetPosition();
+	const bool got = src->Read(magic, 4) == 4;
+	src->SetPosition(at);
+	if(!got || memcmp(magic, "RIFF", 4) != 0)
+		return;
 	UnsupportedFormat("WebP");
-}
-
-bool TVPAcceptSaveAsJPG(void*, const ttstr&, iTJSDispatch2**)
-{
-	return false; // no save support: the engine then offers nothing
 }
 
 bool TVPAcceptSaveAsJXR(void*, const ttstr&, iTJSDispatch2**)
@@ -135,8 +122,16 @@ bool TVPAcceptSaveAsTLG(void*, const ttstr&, iTJSDispatch2**)
 	return false; // no TLG writer in this back end
 }
 
-void TVPLoadHeaderPVRv3(void*, tTJSBinaryStream*, iTJSDispatch2**)
+void TVPLoadHeaderPVRv3(void*, tTJSBinaryStream* src, iTJSDispatch2**)
 {
+	// this is a probe, not a load: it must stay quiet about a picture that is not
+	// its own, or it hides every format registered after it
+	uint8_t magic[4] = {0};
+	const tjs_uint64 at = src->GetPosition();
+	const bool got = src->Read(magic, 4) == 4;
+	src->SetPosition(at);
+	if(!got || memcmp(magic, "PVR\\3", 4) != 0)
+		return;
 	UnsupportedFormat("PVR");
 }
 
@@ -233,7 +228,7 @@ void TVPGL_ASM_Init()
 	// function pointers at the C implementations
 }
 
-tTVPJPEGLoadPrecision TVPJPEGLoadPrecision = jlpMedium;
+// TVPJPEGLoadPrecision is defined by visual/LoadJPEG.cpp, now in the build
 
 void TVPDetectCPU()
 {

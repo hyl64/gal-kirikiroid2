@@ -83,7 +83,7 @@ add_library(krkr STATIC
 	${CORE}/visual/tvpgl.cpp ${CORE}/visual/gl/blend_function.cpp ${CORE}/visual/argb.cpp
 	${CORE}/visual/RenderManager.cpp ${CORE}/visual/ComplexRect.cpp
 	# ---- images and fonts
-	${CORE}/visual/LoadPNG.cpp ${CORE}/visual/LoadTLG.cpp ${CORE}/visual/GraphicsLoaderIntf.cpp
+	${CORE}/visual/LoadPNG.cpp ${CORE}/visual/LoadJPEG.cpp ${CORE}/visual/LoadTLG.cpp ${CORE}/visual/GraphicsLoaderIntf.cpp
 	${CORE}/visual/GraphicsLoadThread.cpp
 	${CORE}/visual/FontSystem.cpp ${CORE}/visual/FreeType.cpp ${CORE}/visual/FreeTypeFontRasterizer.cpp
 	${CORE}/visual/PrerenderedFont.cpp ${CORE}/visual/CharacterData.cpp
@@ -113,7 +113,7 @@ target_include_directories(krkr PUBLIC ${KRKR_INCLUDES})
 target_link_directories(krkr PUBLIC ${PNG_LIBRARY_DIRS} ${FREETYPE_LIBRARY_DIRS}
 	${LZ4_LIBRARY_DIRS} ${SDL2_LIBRARY_DIRS} /opt/homebrew/lib ${OPENCV4}/lib)
 target_link_libraries(krkr PUBLIC tjs2 z archive ${PNG_LIBRARIES} ${FREETYPE_LIBRARIES}
-	${LZ4_LIBRARIES} ${SDL2_LIBRARIES} swscale
+	${LZ4_LIBRARIES} ${SDL2_LIBRARIES} swscale /opt/homebrew/opt/jpeg-turbo/lib/libturbojpeg.dylib /opt/homebrew/opt/jpeg-turbo/lib/libjpeg.dylib
 	${OPENCV4}/lib/libopencv_core.dylib ${OPENCV4}/lib/libopencv_imgproc.dylib)
 
 # ---- the tools, each documented in tools/ ------------------------------------

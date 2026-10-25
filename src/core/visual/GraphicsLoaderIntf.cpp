@@ -156,14 +156,10 @@ public:
 	tTVPGraphicType()
 	{
 		// register some native-supported formats
-		Handlers.push_back(tTVPGraphicHandlerType(
-			TJS_W(".pvr"), TVPLoadGraphicRouter, TVPLoadHeaderRouter, nullptr, nullptr, NULL));
-		Handlers.push_back(tTVPGraphicHandlerType(
-			TJS_W(".jxr"), TVPLoadGraphicRouter, TVPLoadHeaderRouter, TVPSaveAsJXR, TVPAcceptSaveAsJXR, NULL));
-		Handlers.push_back(tTVPGraphicHandlerType(
-			TJS_W(".bpg"), TVPLoadGraphicRouter, TVPLoadHeaderRouter, nullptr, nullptr, NULL));
-		Handlers.push_back(tTVPGraphicHandlerType(
-			TJS_W(".webp"), TVPLoadGraphicRouter, TVPLoadHeaderRouter, nullptr, nullptr, NULL));
+		// PVR, JXR, BPG and WebP are GPU and mobile formats with no decoder on a
+		// desktop back end: advertising them makes every other format fail, because
+		// a handler whose header probe cannot answer is taken as the one that can.
+		// They are simply not registered here.
 		Handlers.push_back(tTVPGraphicHandlerType(
 			TJS_W(".bmp"), TVPLoadGraphicRouter, TVPLoadHeaderRouter, TVPSaveAsBMP, TVPAcceptSaveAsBMP, NULL));
 		Handlers.push_back(tTVPGraphicHandlerType(
