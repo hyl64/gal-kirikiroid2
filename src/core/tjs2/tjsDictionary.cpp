@@ -163,7 +163,7 @@ TJS_BEGIN_NATIVE_METHOD_DECL(/*func.name*/saveStruct)
 
 	return TJS_S_OK;
 }
-TJS_END_NATIVE_STATIC_METHOD_DECL(/*func.name*/saveStruct)
+TJS_END_NATIVE_METHOD_DECL(/*func.name*/saveStruct)
 //----------------------------------------------------------------------
 TJS_BEGIN_NATIVE_METHOD_DECL(/*func.name*/assign)
 {

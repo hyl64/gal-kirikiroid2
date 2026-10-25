@@ -741,6 +741,12 @@ tTVPLocalFileStream::tTVPLocalFileStream(const ttstr &origname,
 {
 	tjs_uint32 access = flag & TJS_BS_ACCESS_MASK;
     if(access == TJS_BS_WRITE) {
+        if(getenv("KRKR_DEBUG_WRITE"))
+        {
+            fprintf(stderr, "[write] %ls (local %ls)\n", (const wchar_t*)origname.c_str(),
+                (const wchar_t*)localname.c_str());
+            fflush(stderr);
+        }
         if (TVPCheckExistentLocalFile(localname)) {
         } else {
 			ttstr dirpath = TVPLocalExtractFilePath(localname);

@@ -293,6 +293,10 @@ int main(int argc, char** argv)
 			while((double)(SDL_GetTicks64() - start) < limit)
 			{
 				TVPDarwinTickTimers();
+				// sound fades step on the frame, so their completion events
+				// are posted from the same thread everything else runs on
+				extern void TVPDarwinTickSoundFades();
+				TVPDarwinTickSoundFades();
 				// the framework's own events (AsyncTrigger and friends) are queued
 				// and dispatched here
 				extern void TVPInvokeEvents();
