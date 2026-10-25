@@ -1388,6 +1388,33 @@ wrote … (1280x720)     92150 色 = 标题画面
 | 音频对象（WaveSoundBuffer/BGM） | 部分（无实际播放） |
 | 剧本推进（多句台词） | ✅ |
 
+### 44. ✅ 音频：接上 SDL_mixer
+
+`WaveSoundBuffer` 原来只保存状态、不出声。现在：
+
+- `open()` 通过**引擎的存储层**读文件（所以归档里的音频也能用）
+- 字节交给 **SDL_mixer**（`Mix_LoadMUS_RW`），`play/stop/pause/volume` 都接到混音器
+- 引擎的音量是 `-10000..0 dB`，映射到混音器的 `0..128`
+
+实测（工程自带的 `song.ogg`）：
+
+```
+[Information] opened, totalTime=220.54
+[Information] playing, status=1
+```
+
+真实游戏跑到 `[playbgm storage="song.ogg"]` **零报错**。
+
+### 45. `build-all.sh` 卡死的原因（顺带修的）
+
+自检脚本卡了十几分钟，两个原因：
+
+1. 检查完 BGI 后 `kill`（SIGTERM）——**引擎有信号处理，不会死**——然后 `wait`：**永远等下去**
+2. 没有先清理残留实例：新实例发现锁被占，**按设计静默退出**，日志是空的
+
+修法：`kill -9`、检查前 `pkill -9 -f bin/bgi`、窗口从 14 秒放宽到 25 秒。
+**结果 4/4 通过。**
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
