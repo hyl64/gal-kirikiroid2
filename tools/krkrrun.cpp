@@ -319,11 +319,62 @@ int main(int argc, char** argv)
 						}
 						if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
 						{
-							device->OnMouseDown(x, y, mbLeft, 0);
-							device->OnClick(x, y);
-							device->OnMouseUp(x, y, mbLeft, 0);
+							/* a click that lands while the scene changes can name a layer
+							 * that has just been thrown away; the run should outlive it */
+							try
+							{
+								device->OnMouseDown(x, y, mbLeft, 0);
+								device->OnClick(x, y);
+								device->OnMouseUp(x, y, mbLeft, 0);
+							}
+							catch(...)
+							{
+								if(getenv("KRKR_DEBUG_INPUT"))
+								{
+									fprintf(stderr, "[input] click hit a stale layer\n");
+									fflush(stderr);
+								}
+							}
 						}
 						clicks++;
+					}
+				}
+				/* KRKR_AUTO_CLICK2 works the same way with its own point, so a run can
+				 * press the title's button and then walk through the story. */
+				if(const char* click2 = getenv("KRKR_AUTO_CLICK2"))
+				{
+					static int clicks2;
+					const long from2 = atol(strrchr(click2, ',') ? strrchr(click2, ',') + 1 : "0");
+					const long long now2 = (long long)(SDL_GetTicks64() - start);
+					if(clicks2 < 30 && now2 >= from2 + (long long)clicks2 * 2000)
+					{
+						int x = 0, y = 0;
+						sscanf(click2, "%d,%d", &x, &y);
+						if(getenv("KRKR_DEBUG_INPUT"))
+						{
+							fprintf(stderr, "[input] click2 %d at %lld ms\n", clicks2 + 1, now2);
+							fflush(stderr);
+						}
+						if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
+						{
+							/* a click that lands while the scene changes can name a layer
+							 * that has just been thrown away; the run should outlive it */
+							try
+							{
+								device->OnMouseDown(x, y, mbLeft, 0);
+								device->OnClick(x, y);
+								device->OnMouseUp(x, y, mbLeft, 0);
+							}
+							catch(...)
+							{
+								if(getenv("KRKR_DEBUG_INPUT"))
+								{
+									fprintf(stderr, "[input] click hit a stale layer\n");
+									fflush(stderr);
+								}
+							}
+						}
+						clicks2++;
 					}
 				}
 				SDL_Delay(16);

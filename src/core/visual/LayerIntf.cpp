@@ -3017,6 +3017,13 @@ bool tTJSNI_BaseLayer::HitTestNoVisibleCheck(tjs_int x, tjs_int y)
 			TVPPostEvent(Owner, Owner, eventname, 0, TVP_EPT_IMMEDIATE, 3, param);
 
 			res = OnHitTest_Work;
+			if(getenv("KRKR_DEBUG_HITTEST"))
+			{
+				fprintf(stderr, "[hittest] layer %p %dx%d at %d,%d -> %d\n",
+					(void*)this, (int)Rect.get_width(), (int)Rect.get_height(),
+					(int)x, (int)y, (int)res);
+				fflush(stderr);
+			}
 		}
 		else
 		{
