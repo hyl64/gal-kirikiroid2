@@ -118,5 +118,19 @@ if strings "$TMP/link.log" | grep -aq "Script exception raised\|already invalida
 	fail=1
 fi
 
+# 4. the released form: a folder holding data.xp3, which is how a game ships
+mkdir -p "$TMP/release"
+python3 "$ROOT/tests/pack-game-xp3.py" "$GAME" "$TMP/release/data.xp3" >/dev/null 2>&1
+(
+	cd "$TMP"
+	KRKR_LOOP_SECONDS=8 SDL_VIDEODRIVER=dummy \
+		"$KRKRRUN" "$TMP/release" --screenshot "$TMP/release.bmp" >"$TMP/release.log" 2>&1
+) || { note "FAILED: the released folder form exited non-zero"; fail=1; }
+strings "$TMP/release.log" | grep -aq "Scenario loaded : first.ks" \
+	|| { note "MISSING: data.xp3 in a folder did not boot"; fail=1; }
+strings "$TMP/release.log" | grep -aq "wrote .*bmp" \
+	|| { note "MISSING: the released form produced no frame"; fail=1; }
+note "released form: data.xp3 mounted from the game folder"
+
 [ "$fail" = "0" ] && echo "PASS: the second real game boots, renders and survives the click path" \
 	|| { echo "FAIL"; exit 1; }
