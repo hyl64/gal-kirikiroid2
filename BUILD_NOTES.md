@@ -1106,6 +1106,33 @@ wrote /tmp/real.bmp (1280x720, presented frame)     帧内 92,150 种颜色
 **下一步**：`tTVPLayerManager::PrimaryClick` 沿图层树的命中测试——
 哪个图层应当拥有 (1000,400) 这一点，以及 KAG 的按钮为什么不是它。
 
+### 30. 点击改走「真实鼠标的入口」，按钮仍不响应
+
+发现两件事：
+
+1. **`PrimaryClick` 只在鼠标捕获还持有时才生效**：
+
+```cpp
+void tTVPLayerManager::PrimaryClick(tjs_int x, tjs_int y)
+{
+    tTJSNI_BaseLayer * l = GetMostFrontChildAt(x, y);
+    if(l && CaptureOwner == l) { l->FireClick(x, y); }   // ← 捕获必须还是它
+}
+```
+
+   而 `CaptureOwner` 是 `PrimaryMouseDown` 设的、`PrimaryMouseUp` 释放的。
+   我原来写成 down → up → click，**点击时捕获已经放掉了**。
+   已改成 **down → click → up**。
+
+2. 改成走 `iTVPDrawDevice::OnMouseDown/OnClick/OnMouseUp`
+   （真实窗口收到鼠标就是这条路径，它会先把窗口坐标映射到主图层）。
+
+**结果**：KAG 的 `start` 按钮仍不响应。
+
+**下一步**：查 `GetMostFrontChildAt(1100, 430)` 到底返回哪个图层——
+是按钮层（说明之后的 `FireClick` 没到 KAG），还是别的层（说明命中测试有问题）。
+注意 KAG 的按钮是 `ButtonLayer` 的 `onClick` 覆写（`system/ButtonLayer.tjs:169`）。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
