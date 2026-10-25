@@ -47,6 +47,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <execinfo.h>
+#include <signal.h>
 #include <cstdlib>
 
 // who called exit(): the engine's terminate path leads somewhere we cannot see
@@ -160,9 +161,25 @@ static bool SaveComposed(const char* path)
 	return ok;
 }
 
+static void OnFatalSignal(int sig)
+{
+	void* frames[40];
+	const int n = backtrace(frames, 40);
+	fprintf(stderr, "\n[fatal] signal %d, %d frame(s)\n", sig, n);
+	backtrace_symbols_fd(frames, n, 2);
+	fflush(stderr);
+	_exit(128 + sig);
+}
+
 int main(int argc, char** argv)
 {
 	atexit(OnExitTrace);
+	if(getenv("KRKR_CRASH_TRACE") != nullptr)
+	{
+		signal(SIGSEGV, OnFatalSignal);
+		signal(SIGBUS, OnFatalSignal);
+		signal(SIGABRT, OnFatalSignal);
+	}
 	if(argc < 2)
 	{
 		fprintf(stderr, "usage: %s <script.tjs>\n", argv[0]);
@@ -403,13 +420,19 @@ int main(int argc, char** argv)
 				// are posted from the same thread everything else runs on
 				extern void TVPDarwinTickSoundFades();
 				TVPDarwinTickSoundFades();
+
 				// the framework's own events (AsyncTrigger and friends) are queued
 				// and dispatched here
 				extern void TVPInvokeEvents();
 				TVPInvokeEvents();
 				if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
 				{
+					// compose the layer tree first, then let a movie overlay draw
+					// over the composed frame: it paints the primary layer, which
+					// Update() would otherwise overwrite
 					device->Update();
+					extern void TVPDarwinTickVideo();
+					TVPDarwinTickVideo();
 					device->Show();
 				}
 				SDL_Event e;
