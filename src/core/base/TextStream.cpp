@@ -527,7 +527,16 @@ public:
 			}
 			buf[i] = 0;
 			tjs_uint64 ofs = ttstr(buf).AsInteger();
-			Stream = TVPCreateStream(name, TJS_BS_UPDATE);
+			/* Update mode needs the file to be there; a save that writes its first
+			 * bytes at an offset is also the first write to that file. */
+			try
+			{
+				Stream = TVPCreateStream(name, TJS_BS_UPDATE);
+			}
+			catch(...)
+			{
+				Stream = TVPCreateStream(name, TJS_BS_WRITE);
+			}
 			Stream->SetPosition(ofs);
 		}
 		else

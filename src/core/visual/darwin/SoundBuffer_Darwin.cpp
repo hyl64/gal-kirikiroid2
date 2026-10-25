@@ -200,6 +200,7 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 	TJS_BEGIN_NATIVE_METHOD_DECL(/*func. name*/ open)
 	{
 		TJS_GET_NATIVE_INSTANCE(_this, WaveInstance);
+		_this->Owner = objthis;
 		if(numparams >= 1 && param[0]->Type() == tvtString)
 		{
 			_this->HaltLocked();
@@ -330,6 +331,7 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 	/* krkr2's fade(to, time, delay): the base class steps the volume itself;
 	 * here the host's frame loop does the stepping (TVPDarwinTickSoundFades) */
 	WAVE_SIMPLE(/*func. name*/ fade,
+		_this->Owner = objthis;
 		if(numparams < 2) return TJS_E_BADPARAMCOUNT;
 		const tjs_int to = (tjs_int)(*param[0]);
 		const tjs_int time = (tjs_int)(*param[1]);
@@ -381,7 +383,9 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 			_this->field = (tjs_int)*param;                                     \
 			return TJS_S_OK;                                                    \
 		}                                                                      \
-		TJS_END_NATIVE_PROP_DECL(name)
+		TJS_END_NATIVE_PROP_SETTER                                             \
+	}                                                                          \
+	TJS_END_NATIVE_PROP_DECL(name)
 	// volume is per buffer: a sound effect must not steal the BGM's level
 	TJS_BEGIN_NATIVE_PROP_DECL(volume)
 	{
@@ -450,6 +454,7 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 			*result = (tjs_int)(_this->IsPaused() ? 1 : 0);
 			return TJS_S_OK;
 		}
+		TJS_END_NATIVE_PROP_GETTER
 		TJS_BEGIN_NATIVE_PROP_SETTER
 		{
 			TJS_GET_NATIVE_INSTANCE(_this, WaveInstance);
@@ -477,6 +482,7 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 			*result = (tjs_int)(_this->Looping ? 1 : 0);
 			return TJS_S_OK;
 		}
+		TJS_END_NATIVE_PROP_GETTER
 		TJS_BEGIN_NATIVE_PROP_SETTER
 		{
 			TJS_GET_NATIVE_INSTANCE(_this, WaveInstance);
