@@ -1218,6 +1218,44 @@ real 2.30   user 0.04   sys 0.10     （热缓存，跑到 first.ks 加载完）
 **下一步**：查 `first.ks` 结束后 KAG 靠什么定时器/事件跳到 `0.ks`，
 以及我们的定时器/事件泵（`TVPDarwinTickTimers` + `TVPInvokeEvents`）是否有丢事件。
 
+### 35. 🎯 根因：运行循环被我改坏了（丢掉了定时器/事件/呈现）
+
+**这是最近十几轮「时好时坏」的真正原因。**
+
+前面移动点击注入代码时，替换范围过大，把循环里的这些调用一起删掉了：
+
+```cpp
+TVPDarwinTickTimers();      // 定时器
+TVPInvokeEvents();          // 引擎事件（AsyncTrigger 等）
+device->Update(); Show();   // 呈现
+SDL_PollEvent(...)          // 窗口事件
+```
+
+循环退化成了「检查点击 + sleep」。后果：
+
+- **没有 tick → 定时器不触发 → KAG 的 Conductor 不推进剧本**（first.ks 停在原地）
+- **没有呈现 → 画面不动**
+- **没有事件轮询 → 窗口「聋了」**
+- 但启动阶段仍然画了第一帧，所以看起来「半死不活」
+
+**恢复后立刻验证**：
+
+```
+[timer] tick, 1 registered
+[timer] due, interval=100 enabled=1
+[Information] timer fired 1
+```
+
+真实工程连跑三次**全部一致**：`2 个剧本`、`92150 色`（标题画面）——**不再时好时坏**。
+
+### 36. 附带修好的两处（这次才发现被 Windows 版挡住）
+
+1. `utils/win32/TimerImpl.cpp` 和 `visual/darwin/Timer_Darwin.cpp` **都定义**
+   `TVPCreateNativeClass_Timer`，而引擎注册的是 Windows 那个（在 macOS 上永不触发）。
+   已把 Windows 版从构建里去掉 —— 现在脚本 `new Timer(...)` 走到我们的实现：
+   `[timer] Construct numparams=2 type0=1`、`enabled=1` ✓
+2. `Timer` 默认应为 **enabled=true**（KAG 创建后从不设 enabled）
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
