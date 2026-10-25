@@ -1153,6 +1153,28 @@ KAG 的按钮是消息层的子层，而剧本里写着 `[position layer=message
 **下一步**：查 `tTJSNI_BaseLayer::GetMostFrontChildAt` 的可见性/透明度判断，
 确认它是否该跳过 opacity=0 的层（KAG 依赖这些层接收点击）。
 
+### 32. 按钮就在那儿，命中测试差一层
+
+递归打印点击处的前景层子树：
+
+```
+[layers] under the click:
+  2: 1016,416 230x60 visible=1 opac=255 type=2     ← start 按钮
+  3: 1016,486 230x60 visible=1 opac=255 type=2     ← setting 按钮
+```
+
+点 (1131,446) **确实落在 start 按钮的矩形内**（1016..1246 × 416..476），
+`front` 却是它的**父层**——说明递归下降在按钮这一层被拒绝了。
+
+**推断**：`HitTestNoVisibleCheck` 对这个 `type=2` 层做的是**alpha 命中测试**，
+而按钮图形的绘制区域小于它的矩形（圆角/留白），我点的位置像素是透明的。
+
+**顺带**：primary 下只有两层——base（visible=1）和 message（**visible=0**），
+所以按钮不在消息层里，而是 base 的子树。
+
+**下一步**：确认 KAG 是否给按钮设了 `hitType`（矩形命中），以及我们的
+`HitTestNoVisibleCheck` 是否读了这个属性。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
