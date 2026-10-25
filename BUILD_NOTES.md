@@ -1466,6 +1466,37 @@ KAG 的注释写得很清楚（`MainWindow.tjs:3785`）：
 `HitTestNoVisibleCheck` 里已经有 `OnHitTest_Work` / `onHitTest` 的钩子
 （图层可以「拒绝」这次命中），需要确认这条路径是否把「没人要的点击」交回 primary。
 
+### 48. 两个纠正
+
+**纠正 1：上一轮「加了 `KRKR_AUTO_CLICK2`」是错的。**
+那次文本替换**没有匹配到任何东西**却静默成功了，所以所谓「两段式点击」的几次实验，
+其实一直是**单点点击**。现在真正插进循环（`grep -c` 确认为 2，二进制里也有这个字符串）。
+
+**纠正 2：`The object is already invalidated` 不是 primary 冒泡引起的。**
+把 primary 冒泡回退之后它照样出现——原因是**点击落在场景切换的瞬间**：
+按钮所在的图层被销毁了，事件的目标对象已失效，异常从循环里抛出去**终结整个运行**。
+
+已给两个注入点加 `try/catch`，让测试工具**熬过一次失效点击**而不是死掉。
+
+### 49. KAG 的点击模型（现在完整了）
+
+```
+点击 → PrimaryMouseDown
+      → 最前面的子层（背景/按钮）
+        → 子层的 onHitTest（KAG 的 GraphicLayer.onHitTest，
+          没有区域动作时返回 false = 拒绝）
+          → 若拒绝，继续往上找 → 最终落到 primary 层
+            → _primaryLayer.onMouseDown → window.onPrimaryClick()  ← KAG 的总入口
+```
+
+**我们的现状**：`onHitTest` 确实被调用（探针确认返回 1 = 接受），
+但**只测到按钮层**；对背景层的「拒绝」还没观察过，
+`onPrimaryClick` 仍然是 0 次。
+
+**下一步**：在一次真实点击里确认背景层是否进入 `onHitTest` 且返回 0；
+如果它根本没被调用（比如命中测试在 `HitTestNoVisibleCheck` 之前就返回了），
+那就是要修的地方。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
