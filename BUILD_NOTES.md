@@ -1078,6 +1078,34 @@ wrote /tmp/real.bmp (1280x720, presented frame)     帧内 92,150 种颜色
 **下一步**：查点击进入管理器之后的分发（`tTVPLayerManager::PrimaryClick` →
 各图层的 `onClick`），看是坐标没命中按钮，还是事件没继续往下传。
 
+### 29. 输入注入做成确定性了；按钮仍不响应
+
+三件事让注入可复现：
+
+1. 挪到循环**最前面**（之前在某些分支之后，可能走不到）
+2. 加**心跳**（每 60 帧打印帧号与毫秒）
+3. **调用前**先打印 `[input] clicking`（万一调用不返回也能看见）
+
+现在日志稳定给出：
+
+```
+[input] frame 661, 13293 ms
+[input] waiting: 11001 ms elapsed, click at 1000,400,11000
+[input] clicking 1000,400
+[input] clicked 1000,400
+```
+
+并且补上了 `NotifyMouseDown` / `NotifyMouseUp`。
+
+**但真实工程的 `start` 按钮仍不响应**：点击确实送到
+`iTVPLayerManager::NotifyClick`，剧本没有推进（没有 `Scenario loaded : 1.ks`）。
+
+**顺带查明一个之前误判的原因**：游戏加载耗时波动极大（冷缓存 ~11 秒，热缓存 ~1 秒），
+所以「点击太早」和「点击没送到」在日志里看起来一样。**心跳 + 时间戳**把这两种情况分开了。
+
+**下一步**：`tTVPLayerManager::PrimaryClick` 沿图层树的命中测试——
+哪个图层应当拥有 (1000,400) 这一点，以及 KAG 的按钮为什么不是它。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
