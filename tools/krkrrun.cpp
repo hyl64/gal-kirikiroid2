@@ -309,7 +309,20 @@ int main(int argc, char** argv)
 				roots.push_back(arg);
 			}
 
-			std::vector<std::string> resolved;
+			// KAG derives System.exePath from the process working directory and looks
+		// for its own patch archives there, so a released folder has to become
+		// the real working directory - not just the storage one.
+		if(folderRelease)
+		{
+			char realDir[PATH_MAX];
+			if(realpath(gameDir.c_str(), realDir) != nullptr && chdir(realDir) != 0)
+			{
+				fprintf(stderr, "krkrrun: cannot enter %s\n", realDir);
+				return 1;
+			}
+		}
+
+		std::vector<std::string> resolved;
 			for(const std::string &r : roots)
 			{
 				char real[PATH_MAX];
@@ -324,6 +337,42 @@ int main(int argc, char** argv)
 			// itself last, so a released data.xp3 + patch.xp3 pair resolves the
 			// way the engine resolves it.  The current directory is the folder,
 			// not an archive: an archive there would outrank every patch.
+			// With patches present, register a merged archive under the base
+			// archive's name: KAG resolves storage through the current directory
+			// first, so a patch mounted only through the auto path would never
+			// win.  The overlay makes the patch's files replace the base ones.
+			if(folderRelease && resolved.size() > 1)
+			{
+				std::vector<ttstr> sources; // ascending priority
+				for(auto it = resolved.rbegin(); it != resolved.rend(); ++it)
+					sources.push_back(ttstr(it->c_str()));
+				extern bool TVPCreateOverlayArchive(const ttstr &, const std::vector<ttstr> &, tTVPArchive **);
+				extern void TVPRegisterArchive(const ttstr &, tTVPArchive *);
+				tTVPArchive *overlay = nullptr;
+				// the archive cache is keyed by the archive path itself, without
+				// the '>' that marks "inside this archive"
+				const ttstr baseWithDelimiter(resolved.back().c_str());
+				const ttstr baseName = baseWithDelimiter.SubString(0,
+					baseWithDelimiter.GetLen() - 1);
+				// the names passed to the overlay are the archive paths, without
+				// the trailing '>' the storage names carry
+				for(ttstr &s : sources)
+				{
+					ttstr trimmed(s.c_str(), s.GetLen() - 1);
+					s = trimmed;
+				}
+				if(TVPCreateOverlayArchive(baseName, sources, &overlay))
+				{
+					TVPRegisterArchive(baseName, overlay);
+					overlay->Release();
+					if(getenv("KRKR_DEBUG_ARCHIVE"))
+					{
+						fprintf(stderr, "[archive] overlay of %d archive(s) registered\n",
+							(int)sources.size());
+						fflush(stderr);
+					}
+				}
+			}
 			// the current directory is the base archive: that is the root KAG's own
 			// path resolution expects, and it is where the engine's start-up looks
 			TVPSetCurrentDirectory(ttstr(resolved.back().c_str()));
