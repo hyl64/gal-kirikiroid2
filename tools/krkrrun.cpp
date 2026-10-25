@@ -296,51 +296,37 @@ int main(int argc, char** argv)
 				 * waiting for one. */
 				if(const char* click = getenv("KRKR_AUTO_CLICK"))
 				{
-					static int done = 0;
-					if(getenv("KRKR_DEBUG_INPUT") && !done)
-						fprintf(stderr, "[input] waiting: %llu ms elapsed, click at %s\n",
-							(unsigned long long)(SDL_GetTicks64() - start), click);
-					if(!done && (Uint64)atof(strchr(click, ',') ? strrchr(click, ',') + 1 : "0") <= SDL_GetTicks64() - start)
+					/* "x,y,from_ms": click at from_ms and then every two seconds, five
+					 * times.  A title screen is ready at a time that varies with how
+					 * warm the file cache is, and one click at a fixed moment keeps
+					 * arriving too early; a few of them do not. */
+					static int clicks;
+					static int shown;
+					// count presented frames: the title is clickable only once the
+					// engine has drawn it, and wall time says nothing about that
+					if(iTVPDrawDevice* d = TVPGetLastDrawDeviceDarwin())
+						shown++;
+					const long from = atol(strrchr(click, ',') ? strrchr(click, ',') + 1 : "0");
+					const long long now = (long long)(SDL_GetTicks64() - start);
+					const bool byFrames = false;   // milliseconds, always
+					if(clicks < 5 && (byFrames ? shown >= (int)from + clicks * 300
+						: now >= from + (long long)clicks * 3000))
 					{
 						int x = 0, y = 0;
 						sscanf(click, "%d,%d", &x, &y);
 						if(getenv("KRKR_DEBUG_INPUT"))
 						{
-							fprintf(stderr, "[input] clicking %d,%d\n", x, y);
+							fprintf(stderr, "[input] click %d at %lld ms\n", clicks + 1, now);
 							fflush(stderr);
 						}
 						if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
 						{
-							/* the device's own entry point: it maps window
-							 * coordinates onto the primary layer first, which is
-							 * what a real mouse goes through */
 							device->OnMouseDown(x, y, mbLeft, 0);
 							device->OnClick(x, y);
 							device->OnMouseUp(x, y, mbLeft, 0);
 						}
-						done = 1;
-						if(getenv("KRKR_DEBUG_INPUT"))
-						{
-							fprintf(stderr, "[input] clicked %d,%d\n", x, y);
-							fflush(stderr);
-						}
+						clicks++;
 					}
-				}
-				TVPDarwinTickTimers();
-				// the framework's own events (AsyncTrigger and friends) are queued
-				// and dispatched here
-				extern void TVPInvokeEvents();
-				TVPInvokeEvents();
-				if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
-				{
-					device->Update();
-					device->Show();
-				}
-				SDL_Event e;
-				while(SDL_PollEvent(&e))
-				{
-					if(e.type == SDL_QUIT)
-						break;
 				}
 				SDL_Delay(16);
 			}

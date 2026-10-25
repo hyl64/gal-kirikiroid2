@@ -398,10 +398,13 @@ void tTVPLayerManager::PrimaryClick(tjs_int x, tjs_int y)
 				{
 					tTJSNI_BaseLayer* c = node->Children.GetSafeLockedObjectAt(i);
 					if(!c) continue;
-					fprintf(stderr, "[layers] %*s%d: %d,%d %dx%d visible=%d opac=%d type=%d\n",
+					fprintf(stderr,
+						"[layers] %*s%d: %d,%d %dx%d vis=%d type=%d hit=%d thr=%d img=%d,%d %dx%d\n",
 						depth * 2, "", (int)i, (int)c->GetLeft(), (int)c->GetTop(),
 						(int)c->GetWidth(), (int)c->GetHeight(), (int)c->GetVisible(),
-						(int)c->GetOpacity(), (int)c->GetType());
+						(int)c->GetType(), (int)c->GetHitType(), (int)c->GetHitThreshold(),
+						(int)c->GetImageLeft(), (int)c->GetImageTop(),
+						(int)c->GetImageWidth(), (int)c->GetImageHeight());
 					walk(c, depth + 1);
 				}
 			};
