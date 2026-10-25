@@ -1275,6 +1275,53 @@ SDL_PollEvent(...)          // 窗口事件
 **另一个观察**：点空白处（落在基础层）也**推不动 `[s]` 停顿**——
 说明 `[s]` 等的是别的事件（可能是窗口级的 onClick，或 `Conductor` 的 click 处理）。
 
+### 38. 🎯 又一个真 bug：事件投递是空的
+
+`FireMouseUp` / `FireClick` 并不直接调 TJS，而是 **`TVPPostEvent(...)` 投递到队列**，
+由 `TVPInvokeEvents()` → `tTVPSystemControl::InvokeEvents()` 派发。
+
+而我们的实现：
+
+```cpp
+// 原来
+void tTVPSystemControl::InvokeEvents() { }        // 空！
+```
+
+**所以所有事件（每个图层的 onClick/onMouseDown/onMouseUp、KAG 的窗口触发器）
+排进队列后从来没有被派发过。**
+
+已修：
+
+```cpp
+void tTVPSystemControl::InvokeEvents()
+{
+    extern void TVPDeliverAllEvents();
+    TVPDeliverAllEvents();
+}
+```
+
+### 39. KAG 的点击模型（读 MainWindow.tjs 得知）
+
+```tjs
+_primaryLayer.onMouseDown = function (x, y, btn) {
+    switch (btn) {
+    case mbLeft:  window.onPrimaryClick(); break;      // ← 剧情前进靠这个
+    ...
+```
+
+而 `AnimationLayer.tjs` 里：
+
+```tjs
+hitType = htMask;
+hitThreshold = 256;  // マウスメッセージは完全に透過
+```
+
+**KAG 把所有剧情图层设成「对鼠标完全透明」，好让点击落到 primary 层。
+我们的默认 `HitThreshold = 16`，所以带背景图的图层会「吃掉」点击。**
+
+**下一步**：验证带背景的 `base` 层的 `hitThreshold` 实际值——
+如果它是 16（默认），说明 KAG 没给它设值，而真实 KiriKiri 的默认值可能是 256。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
