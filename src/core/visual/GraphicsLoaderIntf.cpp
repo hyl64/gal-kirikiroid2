@@ -1709,6 +1709,12 @@ tTVPGraphicHandlerType* TVPFindGraphicLoadHandler(ttstr &_name, ttstr *maskname,
 		handler = &i.GetValue();
 	} else {
 		handler = TVPGraphicType.Hash.Find(ext);
+		if(getenv("KRKR_DEBUG_IMAGE"))
+		{
+			fprintf(stderr, "[image] lookup %ls ext=%ls handler=%p\n",
+				(const wchar_t*)_name.c_str(), (const wchar_t*)ext.c_str(), (void*)handler);
+			fflush(stderr);
+		}
 		if (!handler) {
 			static const ttstr ext_bmp(TJS_W(".bmp"));
 			handler = TVPGraphicType.Hash.Find(ext_bmp);

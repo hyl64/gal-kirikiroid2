@@ -15,6 +15,9 @@
  * end with no cursor theme leaves the system arrow alone.
  */
 
+#include <execinfo.h>
+#include <cstdio>
+#include <cstdlib>
 #include "tjsCommHead.h"
 #include "tjsString.h"
 #include "tjsError.h"
@@ -44,6 +47,15 @@
 
 static void UnsupportedFormat(const char* name)
 {
+	if(getenv("KRKR_DEBUG_IMAGE") != nullptr)
+	{
+		// who asked for a format this back end does not have
+		void* frames[24];
+		const int n = backtrace(frames, 24);
+		fprintf(stderr, "[image] no decoder for %s, asked from:\n", name);
+		backtrace_symbols_fd(frames, n, 2);
+		fflush(stderr);
+	}
 	TVPThrowExceptionMessage(TVPCannotOpenStorage,
 		ttstr(TJS_W("the macOS back end has no decoder for ")) + ttstr(name));
 }
