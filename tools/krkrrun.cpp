@@ -308,7 +308,7 @@ int main(int argc, char** argv)
 					static int clicks;
 					const long from = atol(strchr(click, ',') ? strrchr(click, ',') + 1 : "0");
 					const long long now = (long long)(SDL_GetTicks64() - start);
-					if(clicks < 5 && now >= from + (long long)clicks * 3000)
+					if(clicks < 30 && now >= from + (long long)clicks * 3000)
 					{
 						int x = 0, y = 0;
 						sscanf(click, "%d,%d", &x, &y);
