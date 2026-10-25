@@ -487,6 +487,34 @@ int main(int argc, char** argv)
 						clicks++;
 					}
 				}
+				/* KRKR_AUTO_RCLICK="x,y,from_ms": the right button, which KAG uses
+				 * for its menu (save, load, settings, history). */
+				if(const char* rclick = getenv("KRKR_AUTO_RCLICK"))
+				{
+					static int rclicks;
+					const long fromr = atol(strchr(rclick, ',') ? strrchr(rclick, ',') + 1 : "0");
+					const long long nowr = (long long)(SDL_GetTicks64() - start);
+					if(rclicks < 10 && nowr >= fromr + (long long)rclicks * 2000)
+					{
+						int x = 0, y = 0;
+						sscanf(rclick, "%d,%d", &x, &y);
+						if(getenv("KRKR_DEBUG_INPUT"))
+						{
+							fprintf(stderr, "[input] rclick %d at %lld ms\n", rclicks + 1, nowr);
+							fflush(stderr);
+						}
+						if(iTVPDrawDevice* device = TVPGetLastDrawDeviceDarwin())
+						{
+							device->OnMouseMove(x + 1, y + 1, 0);
+							device->OnMouseMove(x, y, 0);
+							device->OnMouseDown(x, y, mbRight, 0);
+							device->OnMouseUp(x, y, mbRight, 0);
+							device->OnClick(x, y);
+						}
+						rclicks++;
+					}
+				}
+
 				/* KRKR_AUTO_CLICK2 works the same way with its own point, so a run can
 				 * press the title's button and then walk through the story. */
 				if(const char* click2 = getenv("KRKR_AUTO_CLICK2"))
