@@ -1,0 +1,67 @@
+09:21:14 OS : macOS (macOS)
+09:21:14 KAG : 3.32 stable rev. 2
+09:21:14 Kirikiri : 2.32.0.0
+09:21:14 (info) Rebuilding Auto Path Table ...
+09:21:14 (info) Total 79 file(s) found, 51 file(s) activated. (0ms)
+09:21:14 Config.tjs を読み込みました(0ms)
+09:21:14 UpdateConfig.tjs を読み込みました(1ms)
+09:21:14 KAG System スクリプトを読み込んでいます...
+09:21:14 Utils.tjs を読み込みました(0ms)
+09:21:14 KAGLayer.tjs を読み込みました(1ms)
+09:21:14 HistoryLayer.tjs を読み込みました(2ms)
+09:21:14 BGM.tjs を読み込みました(0ms)
+09:21:14 SE.tjs を読み込みました(1ms)
+09:21:14 Movie.tjs を読み込みました(1ms)
+09:21:14 Conductor.tjs を読み込みました(0ms)
+09:21:14 AnimationLayer.tjs を読み込みました(1ms)
+09:21:14 GraphicLayer.tjs を読み込みました(1ms)
+09:21:14 MessageLayer.tjs を読み込みました(4ms)
+09:21:14 Menus.tjs を読み込みました(1ms)
+09:21:14 DefaultMover.tjs を読み込みました(1ms)
+09:21:14 MainWindow.tjs を読み込みました(7ms)
+09:21:14 スクリプトの読み込みに 22ms かかりました
+09:21:14 (info) Use malloc for Bitmap
+09:21:14 KAGMainWindow のコンストラクタで 13ms かかりました
+09:21:14 ================================================================================
+09:21:14 Scenario loaded : first.ks
+09:21:14 処理を開始します
+09:21:15 first.ks : 
+09:21:15 first.ks : [startanchor]
+[Information] ファイルに保存できません (ファイルを開けないか、書き込み禁止です)
+09:21:15 first.ks : [wait time=200]
+09:21:15 first.ks : 
+09:21:15 first.ks : [macro name=clear]
+09:21:15 first.ks : [cm]
+09:21:15 first.ks : [call storage=uiscript.ks target=*uisetup]
+09:21:15 first.ks : [endmacro]
+09:21:15 macro : clear : [cm][call storage=uiscript.ks target=*uisetup]
+09:21:15 first.ks : [macro name=countup]
+09:21:15 first.ks : [eval exp="sf.pos = sf.pos + 1"]
+09:21:15 first.ks : [endmacro]
+09:21:15 macro : countup : [eval exp="sf.pos = sf.pos + 1"]
+09:21:15 first.ks : 
+09:21:15 first.ks : 
+09:21:15 first.ks : 
+09:21:15 first.ks : 
+09:21:15 first.ks : 
+09:21:15 first.ks : 
+09:21:15 first.ks : 
+09:21:15 first.ks : 
+09:21:15 first.ks : 
+09:21:15 first.ks : [jump storage=0.ks target=*1]
+09:21:15 ================================================================================
+09:21:15 Scenario loaded : 0.ks
+09:21:15 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+09:21:15 0.ks : jumped to : *1
+09:21:15 0.ks : ラベル/ページ : *1/
+09:21:15 0.ks : 
+09:21:15 0.ks : ラベル/ページ : *1:2/
+09:21:15 0.ks : 
+09:21:15 0.ks : [rclick enabled=false]
+09:21:15 0.ks : [image storage="bg0" page=fore layer=base]
+09:21:15 trace : animationlayer.tjs(483)[(function) loadImages] <-- graphiclayer.tjs(66)[(function) loadImages] <-- graphiclayer.tjs(368)[(function) loadImages] <-- mainwindow.tjs(5408)[(function expression) (anonymous)] <-- conductor.tjs(440)[(function) onTag] <-- conductor.tjs(104)[(function) timerCallback]
+09:21:15 エラーが発生しました
+ファイル : 0.ks   行 : 20
+タグ : image ( ← エラーの発生した前後のタグを示している場合もあります )
+Cannot open storage the macOS back end has no decoder for PVR
+wrote /tmp/acg2.bmp (1280x720, presented frame)

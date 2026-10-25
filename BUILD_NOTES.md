@@ -982,6 +982,39 @@ wrote /tmp/arc.bmp (640x480, presented frame)     帧内 231 种颜色
 **这是引擎② 距离真实游戏最近的一步**：真实的 KiriKiri 游戏都以 `data.xp3` 发布，
 现在「传归档就跑」通了。产物 `screenshots/archive-launch.png`。
 
+### 25. 🏆 第一款真实 KAG 游戏工程跑起来（带图带音）
+
+数据来源：[CAWorks-ChrisA/kirikiri-kag-ACG](https://github.com/CAWorks-ChrisA/kirikiri-kag-ACG)
+（12.7 MB，完整的 KAG3 游戏工程：22 个框架 tjs、5 个剧本 ks、真实 `bg0.jpg` 背景、
+`song.ogg` BGM、插件目录）。放在 `testdata/kag-game/`。
+
+**跑起来的输出**：
+
+```
+KAG : 3.32 stable rev. 2
+KAGLayer.tjs を読み込みました(1ms)
+KAGMainWindow のコンストラクタで 13ms かかりました
+Scenario loaded : first.ks
+Scenario loaded : 0.ks
+wrote /tmp/acg2.bmp (1280x720, presented frame)
+```
+
+**1280×720 的 HD 工程，加载了它自己的剧本链（first.ks → 0.ks）并呈现了一帧。**
+
+**关键布局发现**：KAG 的框架文件（`Config.tjs`、`UpdateConfig.tjs` 等）必须放在
+**游戏根目录**——`Initialize.tjs` 里是这么写的：
+
+```tjs
+if(Storages.isExistentStorage("Config.tjs")) KAGLoadScript("Config.tjs");
+else if(Storages.isExistentStorage("Config.~new")) { ...; System.exit(); }
+else throw new Exception("Config.tjs が見つかりません。");
+```
+
+即：**裸名字只按「当前目录」解析，不走自动路径**。真实游戏的根目录就是这些文件所在处，
+所以 `cp system/*.tjs .` 之后一切正常。这也解释了之前 kag3-sample 为什么要平铺。
+
+**画面仍然是空的**（在标题画面等输入），下一步是注入按键。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
