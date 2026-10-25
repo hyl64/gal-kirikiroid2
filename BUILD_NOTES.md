@@ -1322,6 +1322,43 @@ hitThreshold = 256;  // マウスメッセージは完全に透過
 **下一步**：验证带背景的 `base` 层的 `hitThreshold` 实际值——
 如果它是 16（默认），说明 KAG 没给它设值，而真实 KiriKiri 的默认值可能是 256。
 
+### 40. 两个实验都失败，已回退（结论很有用）
+
+**实验 A：把鼠标事件同时冒泡给 primary 层**
+（因为 KAG 把 `_primaryLayer.onMouseDown` 当窗口级点击）
+→ 无改善，`[s]` 推不动。**已回退。**
+
+**实验 B：让 `NotifyEventDelivered()` 调 `TVPEventReceived()` 重置事件泵**
+
+引擎源码里：
+
+```cpp
+void TVPInvokeEvents()
+{
+    if(TVPEventInvoked) return;      // ← 只放行一次
+    TVPEventInvoked = true;
+    if(TVPSystemControl) TVPSystemControl->InvokeEvents();
+}
+void TVPEventReceived() { TVPEventInvoked = false; }   // ← 唯一的重置点
+```
+
+我们的 `NotifyEventDelivered()` 是空的，所以**事件泵只工作过一次**。
+加上重置后 → **进程在打印 banner 后就死了**（3 行日志、没有加载任何剧本）。
+
+**推断**：重置导致事件在派发过程中重入（`InvokeEvents` 里再派发），
+需要更小心的实现（比如派发时加递归保护）。**已回退，基线恢复正常**
+（2 个剧本、1280×720、92150 色）。
+
+### 41. 现在稳定的基线
+
+```
+Scenario loaded : first.ks
+Scenario loaded : 0.ks
+wrote … (1280x720)     92150 色 = 标题画面
+```
+
+连续多次运行一致。**这是可以继续工作的地基。**
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
