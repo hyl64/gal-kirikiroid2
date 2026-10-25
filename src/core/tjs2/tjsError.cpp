@@ -14,6 +14,7 @@
 #include "tjsScriptBlock.h"
 #include "tjsError.h"
 #include "tjs.h"
+#include "tjsDebug.h"
 
 #define TJS_MAX_TRACE_TEXT_LEN 1500
 
@@ -259,6 +260,16 @@ void TJSThrowFrom_tjs_error(tjs_error hr, const tjs_char *name)
 	case TJS_E_ACCESSDENYED:
 		TJS_eTJSError(TJSAccessDenyed);
 	case TJS_E_INVALIDOBJECT:
+		// the one choke point every "already invalidated" crosses: print the
+		// live TJS stack before unwinding, so the game script that touched the
+		// dead object is visible
+		if(TJS::TJSStackTracerEnabled())
+		{
+			ttstr invalidstack = TJS::TJSGetStackTraceString();
+			fprintf(stderr, "[invalid-object] tjs stack:\n%s\n",
+				invalidstack.AsStdString().c_str());
+			fflush(stderr);
+		}
 		TJS_eTJSError(TJSInvalidObject);
 	case TJS_E_NATIVECLASSCRASH:
 		TJS_eTJSError(TJSNativeClassCrash);

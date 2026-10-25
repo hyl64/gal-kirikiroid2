@@ -540,19 +540,24 @@ tTJSNI_BaseLayer::Invalidate()
 		Manager->UnregisterSelfFromWindow();
 	}
 
-	if(Manager)
-	{
-		Manager->Release(); // no longer used in this context
-		Manager = NULL;
-	}
-
-	// part from the parent
+	// part from the parent and sever children while the manager is still
+	// attached: Part() reaches Manager->NotifyPart(), which runs
+	// ReleaseCaptureFromTree().  Upstream detaches the manager first, so a
+	// mouse capture held on the invalidated layer survives as a dangling
+	// pointer and the next mouse-up calls into a dead TJS object ("The object
+	// is already invalidated").
 	Part();
 
 	// sever all children
 	TVP_LAYER_FOR_EACH_CHILD_BEGIN(child)
 		child->Part();
 	TVP_LAYER_FOR_EACH_CHILD_END
+
+	if(Manager)
+	{
+		Manager->Release(); // no longer used in this context
+		Manager = NULL;
+	}
 
 	// invalidate font object
 	if(FontObject)

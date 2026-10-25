@@ -292,8 +292,12 @@ void TVPPostEvent(iTJSDispatch2 * source, iTJSDispatch2 *target,
 	// is exclusive?
 	if((flag & TVP_EPT_PRIO_MASK) == TVP_EPT_EXCLUSIVE) TVPExclusiveEventPosted = true;
 
-	// make sure that the event is to be delivered.
-	TVPInvokeEvents();
+	// Upstream leaves delivery to the host's event loop, and so must this
+	// back end: pumping here delivered the conductor's AsyncTrigger inside
+	// the very mouse-up handler that posted it, so a scenario jump ran
+	// synchronously, invalidated the pressed button, and the handler's next
+	// member write died with "The object is already invalidated".  The krkrrun
+	// run loop (KRKR_LOOP_SECONDS) pumps TVPInvokeEvents every frame.
 }
 //---------------------------------------------------------------------------
 

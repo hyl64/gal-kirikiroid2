@@ -66,11 +66,13 @@ class ConsoleOutput : public iTJSConsoleOutput
 public:
 	void ExceptionPrint(const tjs_char* msg) override
 	{
-		fprintf(stderr, "%ls\n", (const wchar_t*)msg);
+		// %ls with the engine's wide chars prints nothing for non-ASCII under
+		// the C locale, so every Japanese error vanished; go through UTF-8
+		fprintf(stderr, "%s\n", ttstr(msg).AsStdString().c_str());
 	}
 	void Print(const tjs_char* msg) override
 	{
-		fprintf(stdout, "%ls", (const wchar_t*)msg);
+		fprintf(stdout, "%s", ttstr(msg).AsStdString().c_str());
 		fflush(stdout);
 	}
 };
@@ -330,9 +332,11 @@ int main(int argc, char** argv)
 							 * that has just been thrown away; the run should outlive it */
 							try
 							{
+								// real window order: down, up, then the
+								// synthesized click; a button acts on mouse-up
 								device->OnMouseDown(x, y, mbLeft, 0);
-								device->OnClick(x, y);
 								device->OnMouseUp(x, y, mbLeft, 0);
+								device->OnClick(x, y);
 							}
 							catch(...)
 							{
@@ -368,9 +372,11 @@ int main(int argc, char** argv)
 							 * that has just been thrown away; the run should outlive it */
 							try
 							{
+								// real window order: down, up, then the
+								// synthesized click; a button acts on mouse-up
 								device->OnMouseDown(x, y, mbLeft, 0);
-								device->OnClick(x, y);
 								device->OnMouseUp(x, y, mbLeft, 0);
+								device->OnClick(x, y);
 							}
 							catch(...)
 							{
@@ -396,11 +402,12 @@ int main(int argc, char** argv)
 	}
 	catch(const eTJS& e)
 	{
-		fprintf(stderr, "krkrrun: %ls\n", (const wchar_t*)e.GetMessage().c_str());
+		fprintf(stderr, "krkrrun: %s\n", e.GetMessage().AsStdString().c_str());
 		status = 1;
 	}
 	catch(...)
 	{
+		fprintf(stderr, "[m] caught unknown\n");
 		fprintf(stderr, "krkrrun: unhandled exception\n");
 		status = 1;
 	}
