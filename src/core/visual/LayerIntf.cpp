@@ -4113,6 +4113,52 @@ void tTJSNI_BaseLayer::DrawText(tjs_int x, tjs_int y, const ttstr &text,
 	case dfOpaque:
 		met = bmAlpha;
 		break;
+	case dfProvince:
+		// KAG draws a [link]'s text with face=dfProvince to create its hit area:
+		// the glyph shapes carry the province number instead of a colour.  The
+		// engine's text blitter targets a colour surface, so render the glyphs
+		// into a scratch surface and stamp the province value where they land.
+		{
+			if(!ProvinceImage) AllocateProvinceImage();
+			if(!ProvinceImage) TVPThrowExceptionMessage(TVPNotDrawableLayerType);
+			ApplyFont();
+			const tjs_int provinceValue = (tjs_int)(color & 0xff);
+			const tjs_int pw = (tjs_int)ProvinceImage->GetWidth();
+			const tjs_int ph = (tjs_int)ProvinceImage->GetHeight();
+			if(pw > 0 && ph > 0)
+			{
+				tTVPBaseBitmap scratch(pw, ph, 32);
+				scratch.Fill(tTVPRect(0, 0, pw, ph), TVP_RGBA2COLOR(255, 255, 255, 0));
+				scratch.SetFont(MainImage->GetFont());
+				tTVPComplexRect ur;
+				scratch.DrawText(ClipRect, x, y, text, TVP_REVRGB(0xffffff),
+					bmCopy, 255, false, aa, 0, 0, 0, 0, 0, &ur);
+
+				tTVPComplexRect stamp;
+				tTVPComplexRect::tIterator it = ur.GetIterator();
+				while(it.Step())
+				{
+					const tTVPRect &br = *it;
+					for(tjs_int py = br.top; py < br.bottom; py++)
+					{
+						if(py < 0 || py >= ph) continue;
+						for(tjs_int px = br.left; px < br.right; px++)
+						{
+							if(px < 0 || px >= pw) continue;
+							const tjs_uint32 cov = scratch.GetPoint(px, py) >> 24;
+							if(cov >= 128)
+								ProvinceImage->SetPoint(px, py, provinceValue);
+						}
+					}
+					stamp.Or(br);
+				}
+				if(stamp.GetCount()) ImageModified = true;
+				if(ImageLeft != 0 || ImageTop != 0)
+					stamp.AddOffsets(ImageLeft, ImageTop);
+				Update(stamp);
+			}
+		}
+		return;
 	default:
 		TVPThrowExceptionMessage(TVPNotDrawableFaceType, TJS_W("drawText"));
 	}
@@ -4549,11 +4595,29 @@ void tTJSNI_BaseLayer::BlendRect(tjs_int dx, tjs_int dy, tTJSNI_BaseLayer *src,
 //---------------------------------------------------------------------------
 void tTJSNI_BaseLayer::OperateRect(tjs_int dx, tjs_int dy, iTVPBaseBitmap *src,
 		const tTVPRect &srcrect, tTVPBlendOperationMode mode,
-			tjs_int opacity)
+			tjs_int opacity, iTVPBaseBitmap *provincesrc)
 {
 	// operate on rectangle ( add/sub/mul/div and others )
 	tTVPRect rect;
 	if(!ClipDestPointAndSrcRect(dx, dy, rect, srcrect)) return; // out of the clipping rect
+
+	if(DrawFace == dfProvince)
+	{
+		// A province transfer copies the hit-area values, not pixels: KAG builds
+		// a [link]'s hot area on its line layer and then operates it onto the
+		// message layer this way.  Writing it to MainImage lost it entirely.
+		if(!ProvinceImage) AllocateProvinceImage();
+		if(!ProvinceImage) TVPThrowExceptionMessage(TVPNotDrawableLayerType);
+		if(provincesrc)
+			ImageModified = ProvinceImage->CopyRect(dx, dy, provincesrc, rect) || ImageModified;
+		else
+			ImageModified = ProvinceImage->Fill(rect, 0) || ImageModified;
+		tTVPRect ur = rect;
+		ur.set_offsets(dx, dy);
+		if(ImageLeft != 0 || ImageTop != 0) ur.add_offsets(ImageLeft, ImageTop);
+		Update(ur);
+		return;
+	}
 
 	// It does not throw an exception in this case perhaps
 	if(mode == omAuto) TVPThrowExceptionMessage( TVPCannotAcceptModeAuto );
@@ -8093,6 +8157,7 @@ TJS_BEGIN_NATIVE_METHOD_DECL(/*func. name*/operateRect)
 	if(numparams < 7) return TJS_E_BADPARAMCOUNT;
 
 	iTVPBaseBitmap* src = NULL;
+	iTVPBaseBitmap* provincesrc = NULL;
 	tTJSVariantClosure clo = param[2]->AsObjectClosureNoAddRef();
 	tTVPBlendOperationMode automode = omAlpha;
 	if(clo.Object)
@@ -8102,7 +8167,10 @@ TJS_BEGIN_NATIVE_METHOD_DECL(/*func. name*/operateRect)
 			tTJSNC_Layer::ClassID, (iTJSNativeInstance**)&srclayer)))
 			src = NULL;
 		else
+		{
 			src = srclayer->GetMainImage(), automode = srclayer->GetOperationModeFromType();
+			provincesrc = srclayer->GetProvinceImage();
+		}
 
 		if( src == NULL )
 		{	// try to get bitmap interface
@@ -8136,7 +8204,8 @@ TJS_BEGIN_NATIVE_METHOD_DECL(/*func. name*/operateRect)
 	if(mode == omAuto) mode = automode;
 
 	_this->OperateRect(*param[0], *param[1], src, rect, mode,
-		(numparams>=9 && param[8]->Type() != tvtVoid)?(tjs_int)*param[8]:255);
+		(numparams>=9 && param[8]->Type() != tvtVoid)?(tjs_int)*param[8]:255,
+		provincesrc);
 
 	return TJS_S_OK;
 }

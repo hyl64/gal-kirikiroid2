@@ -701,6 +701,7 @@ protected:
 public:
 	void SetFace(tTVPDrawFace f) { Face = f; UpdateDrawFace(); }
 	tTVPDrawFace GetFace() const { return Face; }
+	tTVPDrawFace GetDrawFace() const { return DrawFace; }
 
 	void SetHoldAlpha(bool b)  { HoldAlpha = b; }
 	bool GetHoldAlpha() const  { return HoldAlpha; }
@@ -769,7 +770,7 @@ public:
 
 	void OperateRect(tjs_int dx, tjs_int dy, iTVPBaseBitmap *src,
 		const tTVPRect &rect, tTVPBlendOperationMode mode = omAuto,
-			tjs_int opacity = 255);
+			tjs_int opacity = 255, iTVPBaseBitmap *provincesrc = NULL);
 
 	void StretchPile(const tTVPRect &destrect, tTJSNI_BaseLayer *src,
 		const tTVPRect &srcrect, tjs_int opacity = 255,
