@@ -1256,6 +1256,25 @@ SDL_PollEvent(...)          // 窗口事件
    `[timer] Construct numparams=2 type0=1`、`enabled=1` ✓
 2. `Timer` 默认应为 **enabled=true**（KAG 创建后从不设 enabled）
 
+### 37. 按钮层终于收到了鼠标事件（循环修好之后）
+
+循环修好、定时器恢复后，再看点击：
+
+```
+[hit]   rect 1016,416 230x60 at 99,14 hit=0 thr=0 img=0,0 690x60   ← 命中测试通过
+[click] down on layer 0x…800 at 1016,416 size 230,60              ← 正是 start 按钮
+[click] at 1131,446 front=0x…800 capture=0x…800 match=1           ← 捕获也对
+```
+
+**这是这几轮想要的：鼠标事件确实送到了按钮层。**
+
+**但 KAG 仍未跳转到 `1.ks`**——`onExecute` 是 `onMouseUp` 里被调的
+（`system/ButtonLayer.tjs`：`if(Butt_mouseDown) onExecute(...)`），
+所以下一步要查 `FireMouseUp` 是否真的调到那一层、以及 `onExecute` 是否执行了跳转。
+
+**另一个观察**：点空白处（落在基础层）也**推不动 `[s]` 停顿**——
+说明 `[s]` 等的是别的事件（可能是窗口级的 onClick，或 `Conductor` 的 click 处理）。
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
