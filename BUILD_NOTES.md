@@ -1359,6 +1359,35 @@ wrote … (1280x720)     92150 色 = 标题画面
 
 连续多次运行一致。**这是可以继续工作的地基。**
 
+### 42. ✅ 真实游戏可以「玩」了：标题 → 点击 → 正文 → 多句台词
+
+修好 `EventEnable` 之后，`start` 按钮生效，游戏进入 `1.ks`。接着三处小问题：
+
+1. **[l] 换行报错** —— 是**测试目录布局**问题，不是引擎：
+   发行版游戏把 KAG 的 system 文件（**含图片**）放在游戏根目录，
+   而我只平铺了 `*.tjs`。`cp system/*.png .` 之后正常。
+2. **`[playbgm]` → `Member "stopFade" does not exist`** —— `WaveSoundBuffer` 缺方法，已补
+3. **`[ws]` → `Member "status" does not exist`** —— 已补 `status` 属性（0 停止 / 1 播放 / 2 暂停）
+
+**结果：零报错，剧本连续推进。**
+
+产物 `screenshots/real-game-story.png`：对话框里是 **「4th message」**——
+游戏自己的背景 + 对话框 + 台词，一句一句往下走。
+
+### 43. 这个引擎现在的完整能力
+
+| 环节 | 状态 |
+|---|---|
+| XP3 归档（含直接启动） | ✅ |
+| KAG3 框架（22 个脚本） | ✅ |
+| PNG / JPEG / TLG / BMP 解码 | ✅ |
+| 图层合成、按钮、动画层 | ✅ |
+| 定时器（KAG 的 Conductor） | ✅ |
+| 事件派发（图层 onClick/onMouseDown/onMouseUp） | ✅ |
+| 鼠标输入 | ✅ |
+| 音频对象（WaveSoundBuffer/BGM） | 部分（无实际播放） |
+| 剧本推进（多句台词） | ✅ |
+
 ### 24b. 失败记录（保留，作为过程）
 
 真实 KiriKiri 游戏以 `data.xp3` 归档发布，所以让 `krkrrun` 支持「传归档就跑里面的
