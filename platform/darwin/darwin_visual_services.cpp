@@ -565,6 +565,11 @@ void tTVPSystemControl::InvokeEvents()
 	}
 	TVPDeliverAllEvents();
 	gDelivering--;
+	// A handler may have posted another event while delivery was guarded.  Clear
+	// the one-shot latch only after unwinding, so the next host-loop pass can run;
+	// calling TVPEventReceived inside delivery would recursively deliver events.
+	extern void TVPEventReceived();
+	TVPEventReceived();
 }
 
 // the system control's idle bookkeeping: without an idle loop none of it runs

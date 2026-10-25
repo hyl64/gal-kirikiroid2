@@ -14,6 +14,41 @@
 #include "tjsVariant.h"
 #include "StorageIntf.h"
 
+#include <SDL2/SDL_mixer.h>
+
+#include <cmath>
+#include <cstring>
+#include <vector>
+
+namespace
+{
+	/* One mixer for the whole process, opened on first use.  KiriKiri's wave
+	 * buffers are background music and short effects, which is what SDL_mixer
+	 * does; the engine's own volume is -10000..0 dB, and 0 here means silent. */
+	bool EnsureMixer()
+	{
+		static bool opened = false;
+		static bool ok = false;
+		if(!opened)
+		{
+			opened = true;
+			ok = Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) == 0;
+			if(ok)
+				Mix_AllocateChannels(8);
+		}
+		return ok;
+	}
+
+	int VolumeToMixer(tjs_int db)
+	{
+		// -10000 dB is silence and 0 dB is full
+		if(db <= -10000) return 0;
+		if(db >= 0) return MIX_MAX_VOLUME;
+		const double linear = std::pow(10.0, db / 2000.0);
+		return (int)(linear * MIX_MAX_VOLUME);
+	}
+}
+
 namespace
 {
 	class WaveInstance : public tTJSNativeInstance
@@ -28,6 +63,16 @@ namespace
 		bool Opened = false;
 		double Position = 0.0;
 		double TotalTime = 0.0;
+		Mix_Music* Music = nullptr;
+		SDL_RWops* Rw = nullptr;
+
+		~WaveInstance() override
+		{
+			if(Music != nullptr)
+				Mix_FreeMusic(Music);
+			if(Rw != nullptr)
+				SDL_FreeRW(Rw);
+		}
 	};
 }
 
@@ -66,6 +111,47 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 		{
 			tTJSNarrowStringHolder narrow(param[0]->GetString());
 			_this->Storage = (const char*)narrow;
+
+			if(EnsureMixer())
+			{
+				// the file comes through the engine's storage, so an archive works
+				// as well as a folder
+				tTJSBinaryStream* stream = TVPCreateStream(param[0]->GetString());
+				if(stream != nullptr)
+				{
+					std::vector<char> bytes;
+					char buffer[0x2000];
+					tjs_uint read;
+					while((read = stream->Read(buffer, sizeof buffer)) > 0)
+						bytes.insert(bytes.end(), buffer, buffer + read);
+					delete stream;
+
+					if(!bytes.empty())
+					{
+						_this->Rw = SDL_RWFromConstMem(bytes.data(), (int)bytes.size());
+						// SDL_RWFromConstMem points into `bytes`, which dies here, so
+						// hand SDL a copy of its own instead
+						if(_this->Rw != nullptr)
+						{
+							void* copy = malloc(bytes.size());
+							memcpy(copy, bytes.data(), bytes.size());
+							SDL_FreeRW(_this->Rw);
+							_this->Rw = SDL_RWFromMem(copy, (int)bytes.size());
+							_this->Music = Mix_LoadMUS_RW(_this->Rw, 0);
+							if(_this->Music == nullptr)
+							{
+								SDL_FreeRW(_this->Rw);
+								_this->Rw = nullptr;
+								free(copy);
+							}
+							else
+							{
+								_this->TotalTime = (double)Mix_MusicDuration(_this->Music);
+							}
+						}
+					}
+				}
+			}
 		}
 		_this->Opened = true;
 		return TJS_S_OK;
@@ -90,9 +176,20 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 	}                                                                          \
 	TJS_END_NATIVE_METHOD_DECL(name)
 
-	WAVE_SIMPLE(/*func. name*/ play, _this->Playing = true;)
-	WAVE_SIMPLE(/*func. name*/ stop, _this->Playing = false;)
-	WAVE_SIMPLE(/*func. name*/ pause, _this->Playing = false;)
+	WAVE_SIMPLE(/*func. name*/ play,
+		_this->Playing = true;
+		if(_this->Music != nullptr)
+		{
+			const int loops = _this->Looping ? -1 : 0;
+			if(Mix_PlayMusic(_this->Music, loops) != 0)
+				_this->Playing = false;
+		})
+	WAVE_SIMPLE(/*func. name*/ stop,
+		_this->Playing = false;
+		if(_this->Music != nullptr) Mix_HaltMusic();)
+	WAVE_SIMPLE(/*func. name*/ pause,
+		_this->Paused = true;
+		if(_this->Music != nullptr) Mix_PauseMusic();)
 	WAVE_SIMPLE(/*func. name*/ fade, (void)numparams; (void)param;)
 	/* a fade that is cancelled: with no mixer of its own this back end stops the
 	 * sound at once, which is what the caller is asking to happen */
@@ -119,7 +216,25 @@ tTJSNC_WaveSoundBuffer_Darwin::tTJSNC_WaveSoundBuffer_Darwin()
 	}                                                                          \
 	TJS_END_NATIVE_PROP_DECL(name)
 
-	WAVE_INT_PROP(volume, Volume)
+	TJS_BEGIN_NATIVE_PROP_DECL(volume)
+	{
+		TJS_BEGIN_NATIVE_PROP_GETTER
+		{
+			TJS_GET_NATIVE_INSTANCE(_this, WaveInstance);
+			*result = (tjs_int)_this->Volume;
+			return TJS_S_OK;
+		}
+		TJS_END_NATIVE_PROP_GETTER
+		TJS_BEGIN_NATIVE_PROP_SETTER
+		{
+			TJS_GET_NATIVE_INSTANCE(_this, WaveInstance);
+			_this->Volume = (tjs_int)*param;
+			Mix_VolumeMusic(VolumeToMixer(_this->Volume));
+			return TJS_S_OK;
+		}
+		TJS_END_NATIVE_PROP_SETTER
+	}
+	TJS_END_NATIVE_PROP_DECL(volume)
 	WAVE_INT_PROP(pan, Pan)
 #undef WAVE_INT_PROP
 
